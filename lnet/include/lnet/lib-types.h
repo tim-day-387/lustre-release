@@ -341,6 +341,10 @@ struct lnet_lnd {
 
 	/* get LND timeout */
 	int (*lnd_get_timeout)(void);
+
+	/* find cached metadata associated with nid */
+	int (*lnd_get_nid_metadata)(struct lnet_ni *ni,
+				    struct lnet_nid_md_entry *md_entry);
 };
 
 struct lnet_tx_queue {
