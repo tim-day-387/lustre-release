@@ -1,0 +1,95 @@
+# SPDX-License-Identifier: GPL-2.0
+
+#
+# This file is part of Lustre, http://www.lustre.org/
+#
+
+config LUSTRE
+	tristate "Lustre filesystem support"
+	depends on LNET
+	help
+	  Lustre is a high-performance, scalable parallel filesystem
+	  commonly used in supercomputing and large-scale cluster
+	  environments.
+
+	  To compile as modules, choose M here.
+
+	  If unsure, say N.
+
+if LUSTRE
+
+config LUSTRE_FS
+	bool "Lustre client support"
+	default y
+	help
+	  Enable Lustre client support. This allows mounting Lustre
+	  filesystems.
+
+	  If unsure, say Y.
+
+config LUSTRE_FS_SERVER
+	bool "Lustre server support"
+	default y
+	help
+	  Enable Lustre server support (MDS, OSS, MGS).
+
+	  If unsure, say N.
+
+config LUSTRE_FS_LDISKFS
+	bool "Lustre ldiskfs OSD support"
+	depends on LUSTRE_FS_SERVER
+	depends on LDISKFS_FS || EXT4_FS
+	help
+	  Enable the ldiskfs (ext4-based) Object Storage Device backend
+	  for Lustre servers.
+
+	  If unsure, say N.
+
+config LUSTRE_FS_ZFS
+	bool "Lustre ZFS OSD support"
+	default y
+	depends on LUSTRE_FS_SERVER
+	depends on ZFS
+	help
+	  Enable the ZFS Object Storage Device backend for Lustre servers.
+
+	  If unsure, say N.
+
+config LUSTRE_FS_GSS
+	bool "Lustre GSS security support"
+	default n
+	depends on CRYPTO
+	help
+	  Enable GSS (Generic Security Services) support for Lustre,
+	  providing Kerberos authentication and encryption.
+
+	  If unsure, say N.
+
+config LUSTRE_FS_GSS_SSK
+	bool "Lustre GSS shared-secret key support"
+	default n
+	depends on LUSTRE_FS_GSS
+	help
+	  Enable shared-secret key (SSK) mechanism for Lustre GSS.
+
+	  If unsure, say N.
+
+config LUSTRE_FS_GSS_KEYRING
+	bool "Lustre GSS keyring support"
+	default n
+	depends on LUSTRE_FS_GSS
+	depends on KEYS
+	help
+	  Enable kernel keyring integration for Lustre GSS.
+
+	  If unsure, say N.
+
+config LUSTRE_FS_TESTS
+	bool "Lustre kernel unit tests"
+	default n
+	help
+	  Build Lustre in-kernel unit tests.
+
+	  If unsure, say N.
+
+endif # LUSTRE

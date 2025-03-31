@@ -1,0 +1,52 @@
+# SPDX-License-Identifier: GPL-2.0
+
+#
+# This file is part of Lustre, http://www.lustre.org/
+#
+
+config LNET
+	tristate "Lustre networking (LNet) support"
+	depends on NET
+	help
+	  LNet is the Lustre networking subsystem. It provides a reliable,
+	  high-performance messaging layer that supports multiple underlying
+	  network transports (InfiniBand, TCP, etc.).
+
+	  LNet is required by the Lustre filesystem.
+
+	  To compile as modules, choose M here.
+
+	  If unsure, say N.
+
+if LNET
+
+config LNET_O2IBLND
+	bool "LNet InfiniBand (o2iblnd) driver"
+	depends on INFINIBAND
+	help
+	  Enable the InfiniBand LNet network driver (o2iblnd).
+
+	  If unsure, say N.
+
+config LNET_GNILND
+	bool "LNet Gemini/Aries (gnilnd) driver"
+	help
+	  Enable the Cray Gemini/Aries interconnect LNet network driver.
+
+	  If unsure, say N.
+
+config LNET_KFILND
+	bool "LNet libfabric (kfilnd) driver"
+	help
+	  Enable the kernel libfabric LNet network driver.
+
+	  If unsure, say N.
+
+config LNET_EFALND
+	bool "LNet EFA (efalnd) driver"
+	help
+	  Enable the AWS Elastic Fabric Adapter LNet network driver.
+
+	  If unsure, say N.
+
+endif # LNET
