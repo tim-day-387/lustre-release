@@ -1,0 +1,281 @@
+#!/bin/bash
+# SPDX-License-Identifier: GPL-2.0
+
+#
+# This file is part of Lustre, http://www.lustre.org/
+#
+# Author: Timothy Day <timday@amazon.com>
+#
+
+set -ef
+
+function rules_setup() {
+	local path="$1"
+	local config="$2"
+	local relpath="${path#$KERNEL_DIR/}"
+	relpath="${relpath%/}"
+
+	for file in $(find "$path" -name Makefile); do
+		sed -i "s/.*include.*Rules//g" "$file"
+		echo "include \$(srctree)/$relpath/Rules" >> "$file"
+		sed -i "s/obj-m/obj-\$($config)/g" "$file"
+	done
+
+	cat > "$path/Rules" <<EOF
+EXTRA_CFLAGS := \$(EXTRA_PRE_CFLAGS)
+#EXTRA_CFLAGS += -include \$(srctree)/include/lustre/undef.h
+EXTRA_CFLAGS += -include \$(srctree)/include/lustre/config.h
+EXTRA_CFLAGS += -I\$(srctree)/include/libcfs/
+EXTRA_CFLAGS += -I\$(srctree)/include/libcfs/libcfs/
+EXTRA_CFLAGS += -I\$(srctree)/include/libcfs/uapi/
+EXTRA_CFLAGS += -I\$(srctree)/include/lustre/
+EXTRA_CFLAGS += -I\$(srctree)/include/lustre/lustre/
+EXTRA_CFLAGS += -I\$(srctree)/include/lustre/uapi/
+EXTRA_CFLAGS += -I\$(srctree)/include/lnet/
+EXTRA_CFLAGS += -I\$(srctree)/include/lnet/lnet/
+EXTRA_CFLAGS += -I\$(srctree)/include/lnet/uapi/
+EXTRA_CFLAGS += -I\$(srctree)/include/lustre_compat/
+EXTRA_CFLAGS += -Wno-format-truncation
+EXTRA_CFLAGS += -g -O2 -Wall -Wno-error
+EXTRA_CFLAGS += \$(EXTRA_POST_CFLAGS)
+
+obj-\$($config) += \$(patsubst %,%.o,\$(MODULES))
+EOF
+}
+
+function compat_clone() {
+	# TODO: This should be optional... and not in net/
+	cp -R include/libcfs "$KERNEL_DIR/include/libcfs"
+	cp -R include/lustre_compat "$KERNEL_DIR/include/lustre_compat"
+}
+
+function lnet_copy_tree() {
+	cp -R lnet/include "$KERNEL_DIR/include/lnet"
+	mkdir -p "$KERNEL_DIR/net/lnet/lnet"
+	cp -R lnet/lnet "$KERNEL_DIR/net/lnet/"
+	cp -R lnet/klnds "$KERNEL_DIR/net/lnet/"
+	cp -R lnet/selftest "$KERNEL_DIR/net/lnet/"
+	cp lnet/Makefile "$KERNEL_DIR/net/lnet/Makefile"
+}
+
+function lnet_clone() {
+	lnet_copy_tree
+
+	rules_setup "$KERNEL_DIR/net/lnet/" CONFIG_LNET
+
+	sed -i '/module_param(cpu_pattern, charp, 0444);/i char *cpu_pattern = "N";' "$KERNEL_DIR/net/lnet/lnet/lib-cpt.c"
+	sed -i '/module_param(cpu_npartitions, int, 0444);/i int cpu_npartitions;' "$KERNEL_DIR/net/lnet/lnet/lib-cpt.c"
+
+	cp lnet/Kconfig "$KERNEL_DIR/net/lnet/Kconfig"
+
+	sed -i '/source "net\/ceph\/Kconfig\"/i\source "net/lnet/Kconfig"' "$KERNEL_DIR/net/Kconfig"
+	echo 'obj-$(CONFIG_LNET) += lnet/' >> "$KERNEL_DIR/net/Makefile"
+}
+
+function find_kernel_dirs() {
+	find lustre/ -mindepth 1 -maxdepth 1 -type d |
+	    grep -v utils |
+	    grep -v scripts |
+	    grep -v kernel_patches |
+	    grep -v conf |
+	    grep -v include |
+	    grep -v tests |
+	    grep -v doc
+}
+
+function setup_lustre_config() {
+	cp config.h "$KERNEL_DIR/include/lustre/"
+	sed -i '/HAVE_LUSTRE_CRYPTO/d' "$KERNEL_DIR/include/lustre/config.h"
+	sed -i '/CONFIG_LL_ENCRYPTION/d' "$KERNEL_DIR/include/lustre/config.h"
+	cp undef.h "$KERNEL_DIR/include/lustre/" || true
+	sed -i 's/.*LUSTRE_VERSION_STRING.*/#define LUSTRE_VERSION_STRING "in-kernel"/g' "$KERNEL_DIR/include/lustre/config.h"
+	echo "#define HAVE_ZFS_ARC_PRUNE_FUNC_UINT64" >> "$KERNEL_DIR/include/lustre/config.h"
+}
+
+function lustre_copy_tree() {
+	cp -R lustre/include "$KERNEL_DIR/include/lustre"
+	cp -R include/linux/libcfs "$KERNEL_DIR/include/libcfs"
+
+	for dir in $(find_kernel_dirs); do
+		mkdir -p "$KERNEL_DIR/fs/$dir"
+		cp -R "$dir" "$KERNEL_DIR/fs/lustre/"
+	done
+
+	cp lustre/Makefile "$KERNEL_DIR/fs/lustre/Makefile"
+}
+
+function fix_zfs_paths() {
+	local makefile="$KERNEL_DIR/fs/lustre/osd-zfs/Makefile"
+
+	if [[ ! -f "$makefile" ]]; then
+		return
+	fi
+
+	# Fix zfs_config.h include path - replace absolute path with kernel-relative
+	# Matches: -include /any/path/to/zfs_config.h
+	sed -i 's|-include [^ ]*/zfs_config\.h|-include $(srctree)/include/zfs/zfs_config.h|g' "$makefile"
+
+	# Fix spl_config.h include path (SPL is now part of ZFS)
+	# Matches: -include /any/path/to/spl_config.h
+	sed -i 's|-include [^ ]*/spl_config\.h||g' "$makefile"
+
+	# Fix ZFS include paths - replace absolute paths with kernel-relative
+	# Matches: -I/any/path/to/zfs/include/os/linux/kernel -> -I$(srctree)/include/zfs/os/linux/kernel
+	sed -i 's|-I[^ ]*/include/os/linux/kernel|-I$(srctree)/include/zfs/os/linux/kernel|g' "$makefile"
+	sed -i 's|-I[^ ]*/include/os/linux/spl|-I$(srctree)/include/zfs/os/linux/spl|g' "$makefile"
+	sed -i 's|-I[^ ]*/include/os/linux/zfs|-I$(srctree)/include/zfs/os/linux/zfs|g' "$makefile"
+
+	# Fix generic ZFS include paths
+	# Matches: -I/any/path/to/zfs/include/spl -> -I$(srctree)/include/zfs/spl
+	sed -i 's|-I[^ ]*/include/spl|-I$(srctree)/include/zfs/spl|g' "$makefile"
+
+	# Fix -I@ZFS@ and -I@ZFS@/include patterns (already substituted to absolute paths)
+	# These become -I/path/to/zfs -I/path/to/zfs/include
+	# We need to be careful not to match paths we've already fixed
+	# Replace remaining absolute ZFS paths with kernel include path
+	sed -i 's|-I/[^ ]*/zfs_build[^ ]* |-I$(srctree)/include/zfs |g' "$makefile"
+	sed -i 's|-I/[^ ]*/zfs_build[^ ]*$|-I$(srctree)/include/zfs|g' "$makefile"
+
+	# Remove any SPL-specific lines that reference external paths
+	sed -i '/@SPL_ENABLED_TRUE@.*-I.*SPL/d' "$makefile"
+
+	# Fix $(ZFS) and $(ZFS_OBJ) Make variable references for in-tree builds
+	# $(ZFS_OBJ)/zfs_config.h -> $(srctree)/include/zfs/zfs_config.h
+	sed -i 's|-include \$(ZFS_OBJ)/zfs_config\.h|-include $(srctree)/include/zfs/zfs_config.h|g' "$makefile"
+	# $(ZFS)/include/os/linux/* -> $(srctree)/include/zfs/os/linux/*
+	sed -i 's|-I\$(ZFS)/include/os/linux/kernel|-I$(srctree)/include/zfs/os/linux/kernel|g' "$makefile"
+	sed -i 's|-I\$(ZFS)/include/os/linux/spl|-I$(srctree)/include/zfs/os/linux/spl|g' "$makefile"
+	sed -i 's|-I\$(ZFS)/include/os/linux/zfs|-I$(srctree)/include/zfs/os/linux/zfs|g' "$makefile"
+	# $(ZFS)/include/spl -> $(srctree)/include/zfs/spl
+	sed -i 's|-I\$(ZFS)/include/spl|-I$(srctree)/include/zfs/spl|g' "$makefile"
+	# -I$(ZFS) -I$(ZFS)/include -> -I$(srctree)/include/zfs
+	sed -i 's|-I\$(ZFS)/include||g' "$makefile"
+	sed -i 's|-I\$(ZFS)|-I$(srctree)/include/zfs|g' "$makefile"
+}
+
+function lustre_clone() {
+	lustre_copy_tree
+	setup_lustre_config
+
+	# TODO: Why?
+	sed -i 's/..\/..\//..\//g' "$KERNEL_DIR/fs/lustre/kunit/ldlm_extent.c"
+
+	# Fix ZFS paths for native kernel builds
+	fix_zfs_paths
+
+	rules_setup "$KERNEL_DIR/fs/lustre/" CONFIG_LUSTRE
+
+	cp lustre/Kconfig "$KERNEL_DIR/fs/lustre/Kconfig"
+
+	sed -i '/source "fs\/ceph\/Kconfig\"/i\source "fs/lustre/Kconfig"' "$KERNEL_DIR/fs/Kconfig"
+	echo 'obj-$(CONFIG_LUSTRE) += lustre/' >> "$KERNEL_DIR/fs/Makefile"
+}
+
+function clean_lustre() {
+	# TODO: Should we clean first?
+	# make clean ||: 1> /dev/null
+	return
+}
+
+function clean_linux() {
+	local old="$PWD"
+
+	rm -rf "$KERNEL_DIR/include/lustre" "$KERNEL_DIR/fs/lustre"
+	rm -rf "$KERNEL_DIR/include/lnet" "$KERNEL_DIR/net/lnet"
+	rm -rf "$KERNEL_DIR/include/lustre_compat" "$KERNEL_DIR/net/lustre_compat"
+
+	cd "$KERNEL_DIR"
+	git checkout ./*
+	git clean -xdf
+	# make mrproper
+	cd "$old"
+}
+
+function cbi_clean() {
+	[[ "$#" -eq 2 ]] || cbi_usage
+	stat "$2" 1> /dev/null 2> /dev/null || cbi_usage
+
+	KERNEL_DIR="$2"
+	KPATH="$(readlink -e "$KERNEL_DIR")"
+
+	clean_linux
+}
+
+function cbi_usage() {
+	less -F <<EOF
+Usage: ${0##*/} <linux source tree>
+
+Port Lustre to the native Linux build system
+	clean         Clean the kernel tree.
+	help          List all possible commands.
+EOF
+	exit
+}
+
+function swap_symbols() {
+    local old_sym="$1"
+    local new_sym="$2"
+    echo "SWAP $1 $2 in $KERNEL_DIR"
+
+    find "$KERNEL_DIR/net/lnet" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/fs/lustre" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/include/lustre/" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/include/lnet" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/include/libcfs" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/include/lustre_compat" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+}
+
+function swap_headers() {
+    echo "SWAP headers in $KERNEL_DIR"
+
+    find "$KERNEL_DIR/net/lnet" -type f -exec sed -i 's|#include <linux/libcfs/|#include <libcfs/|g' {} +
+    find "$KERNEL_DIR/fs/lustre" -type f -exec sed -i 's|#include <linux/libcfs/|#include <libcfs/|g' {} +
+    find "$KERNEL_DIR/include" -type f -exec sed -i 's|#include <linux/libcfs/|#include <libcfs/|g' {} +
+}
+
+function swap_all_symbols() {
+    swap_symbols compat_vfree_atomic vfree_atomic
+    swap_symbols cfs_totalram_pages totalram_pages
+    swap_symbols ll_shrinker_alloc shrinker_alloc
+    swap_symbols ll_shrinker_register shrinker_register
+    swap_symbols ll_shrinker_free shrinker_free
+    swap_symbols compat_apply_workqueue_attrs apply_workqueue_attrs
+    swap_symbols compat_alloc_workqueue_attrs alloc_workqueue_attrs
+    swap_symbols compat_free_workqueue_attrs free_workqueue_attrs
+    swap_headers
+}
+
+function cbi_copy_builtin() {
+	[[ "$#" -eq 1 ]] || cbi_usage
+	stat "$1" 1> /dev/null 2> /dev/null || cbi_usage
+
+	KERNEL_DIR="$1"
+	KPATH="$(readlink -e "$KERNEL_DIR")"
+
+	if ! [[ -e 'config.h' ]]; then
+		echo "$0: you did not run configure, or you're not in the Lustre source directory."
+		exit 1
+	fi >&2
+
+	clean_lustre
+	clean_linux
+	compat_clone
+	lnet_clone
+	lustre_clone
+	swap_all_symbols
+
+	echo "$0: done. now you can build the kernel with Lustre support." >&2
+}
+
+# Process options
+for arg in "$@"; do
+	shift
+	case "$arg" in
+		clean) cbi_clean "$arg" "$@";;
+		help) cbi_usage;;
+		*) cbi_copy_builtin "$arg" "$@";;
+	esac
+	exit
+done
+
+cbi_usage
