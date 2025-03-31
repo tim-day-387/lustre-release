@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: GPL-2.0
+
+#
+# This file is part of Lustre, http://www.lustre.org/
+#
+
+config LIBCFS
+	tristate "Lustre common library (libcfs)"
+	help
+	  libcfs is a foundational library shared by Lustre and LNet. It
+	  provides portable utilities, debug and tracing infrastructure,
+	  and compatibility shims used by the rest of the Lustre stack.
+
+	  LIBCFS is required by LNet and Lustre and is normally selected
+	  automatically when either is enabled.
+
+	  To compile as modules, choose M here.
+
+	  If unsure, say N.
