@@ -29,7 +29,7 @@
 #include <float.h>
 #include <limits.h>
 #include <ctype.h>
-#include "libcfs/util/list.h"
+#include <libcfs/util/list.h>
 #include <cyaml.h>
 
 #define INDENT		4
