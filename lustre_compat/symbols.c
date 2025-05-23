@@ -51,6 +51,16 @@ static int find_kallsyms_lookup_name(void)
 }
 #endif
 
+#ifndef HAVE_SCHED_SHOW_TASK
+static void (*__sched_show_task)(struct task_struct *p);
+
+void sched_show_task(struct task_struct *p)
+{
+	__sched_show_task(p);
+}
+EXPORT_SYMBOL_GPL(sched_show_task);
+#endif
+
 int lustre_symbols_init(void)
 {
 	int rc;
@@ -61,6 +71,12 @@ int lustre_symbols_init(void)
 
 	if (!cfs_kallsyms_lookup_name("kallsyms_lookup_name"))
 		return -EINVAL;
+
+#ifndef HAVE_SCHED_SHOW_TASK
+	__sched_show_task = cfs_kallsyms_lookup_name("sched_show_task");
+	if (!__sched_show_task)
+		return -EINVAL;
+#endif
 
 	return 0;
 }

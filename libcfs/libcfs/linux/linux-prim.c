@@ -103,28 +103,6 @@ int cfs_apply_workqueue_attrs(struct workqueue_struct *wq,
 }
 EXPORT_SYMBOL_GPL(cfs_apply_workqueue_attrs);
 
-/* Linux v5.1-rc5 214d8ca6ee ("stacktrace: Provide common infrastructure")
- * CONFIG_ARCH_STACKWALK indicates that save_stack_trace_tsk symbol is not
- * exported. Use symbol_get() to find if save_stack_trace_tsk is available.
- */
-#ifdef CONFIG_ARCH_STACKWALK
-static unsigned int (*task_dump_stack_t)(struct task_struct *task,
-					 unsigned long *store,
-					 unsigned int size,
-					 unsigned int skipnr);
-
-int cfs_stack_trace_save_tsk(struct task_struct *task, unsigned long *store,
-			     unsigned int size, unsigned int skipnr)
-{
-	if (task_dump_stack_t)
-		return task_dump_stack_t(task, store, size, skipnr);
-
-	pr_info("No stack, save_stack_trace_tsk() could not be found\n");
-
-	return 0;
-}
-#endif
-
 #ifndef HAVE_XARRAY_SUPPORT
 struct kmem_cache *xarray_cachep;
 
@@ -195,10 +173,6 @@ int __init cfs_arch_init(void)
 
 #ifndef HAVE_WAIT_VAR_EVENT
 	wait_bit_init();
-#endif
-#ifdef CONFIG_ARCH_STACKWALK
-	task_dump_stack_t =
-		(void *)cfs_kallsyms_lookup_name("stack_trace_save_tsk");
 #endif
 	cfs_apply_workqueue_attrs_t =
 		(void *)cfs_kallsyms_lookup_name("apply_workqueue_attrs");
