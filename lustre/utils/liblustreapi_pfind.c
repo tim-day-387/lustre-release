@@ -51,7 +51,7 @@ static void *find_worker(void *arg)
 					cb_find_init, cb_common_fini,
 					unit->fwu_param, NULL);
 		work_unit_free(unit);
-		__sync_fetch_and_sub(&queue->fwq_active_units, 1);
+		ll_atomic_fetch_sub(&queue->fwq_active_units, 1);
 	}
 
 	return NULL;
