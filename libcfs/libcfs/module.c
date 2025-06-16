@@ -659,6 +659,13 @@ static int __init libcfs_init(void)
 		return rc;
 	}
 
+	rc = lustre_symbols_init();
+	if (rc < 0) {
+		CERROR("lustre_symbols_init: error %d\n", rc);
+		libcfs_debug_cleanup();
+		return rc;
+	}
+
 	rc = cfs_arch_init();
 	if (rc < 0) {
 		CERROR("cfs_arch_init: error %d\n", rc);

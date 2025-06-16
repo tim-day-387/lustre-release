@@ -24,6 +24,9 @@
 #include <linux/uio.h>
 #include <linux/kallsyms.h>
 
+/* TODO: This will soon be private... */
+void *cfs_kallsyms_lookup_name(const char *name);
+
 /*
  * Since 4.20 commit 00e23707442a75b404392cef1405ab4fd498de6b
  * iov_iter: Use accessor functions to access an iterator's type and direction.
@@ -311,18 +314,6 @@ int cfs_stack_trace_save_tsk(struct task_struct *task, unsigned long *store,
 	       sizeof(*(obj)) - offsetof(typeof(*(obj)), member));	\
 })
 #endif /* memset_startat() */
-
-#ifdef HAVE_KALLSYMS_LOOKUP_NAME
-static inline void *cfs_kallsyms_lookup_name(const char *name)
-{
-	return (void *)kallsyms_lookup_name(name);
-}
-#else
-static inline void *cfs_kallsyms_lookup_name(const char *name)
-{
-	return NULL;
-}
-#endif
 
 #ifndef HAVE_STRSCPY
 static inline ssize_t strscpy(char *s1, const char *s2, size_t sz)
