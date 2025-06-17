@@ -51,6 +51,18 @@ static int find_kallsyms_lookup_name(void)
 }
 #endif
 
+#ifndef HAVE_APPLY_WORK_ATTRS
+static int (*__apply_workqueue_attrs)(struct workqueue_struct *wq,
+					  const struct workqueue_attrs *attrs);
+
+int apply_workqueue_attrs(struct workqueue_struct *wq,
+			      const struct workqueue_attrs *attrs)
+{
+	return __apply_workqueue_attrs(wq, attrs);
+}
+EXPORT_SYMBOL_GPL(apply_workqueue_attrs);
+#endif
+
 int lustre_symbols_init(void)
 {
 	int rc;
@@ -61,6 +73,12 @@ int lustre_symbols_init(void)
 
 	if (!cfs_kallsyms_lookup_name("kallsyms_lookup_name"))
 		return -EINVAL;
+
+#ifndef HAVE_APPLY_WORK_ATTRS
+	__apply_workqueue_attrs = cfs_kallsyms_lookup_name("apply_workqueue_attrs");
+	if (!__apply_workqueue_attrs)
+		return -EINVAL;
+#endif
 
 	return 0;
 }

@@ -139,8 +139,8 @@ static inline void kernel_param_lock(struct module *mod)
 }
 #endif /* ! HAVE_KERNEL_PARAM_LOCK */
 
-int cfs_apply_workqueue_attrs(struct workqueue_struct *wq,
-			      const struct workqueue_attrs *attrs);
+int apply_workqueue_attrs(struct workqueue_struct *wq,
+			  const struct workqueue_attrs *attrs);
 
 #ifndef HAVE_KSTRTOBOOL_FROM_USER
 

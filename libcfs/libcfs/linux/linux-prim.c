@@ -91,18 +91,6 @@ time64_t ktime_get_seconds(void)
 EXPORT_SYMBOL(ktime_get_seconds);
 #endif /* HAVE_KTIME_GET_SECONDS */
 
-static int (*cfs_apply_workqueue_attrs_t)(struct workqueue_struct *wq,
-					  const struct workqueue_attrs *attrs);
-
-int cfs_apply_workqueue_attrs(struct workqueue_struct *wq,
-			      const struct workqueue_attrs *attrs)
-{
-	if (cfs_apply_workqueue_attrs_t)
-		return cfs_apply_workqueue_attrs_t(wq, attrs);
-	return 0;
-}
-EXPORT_SYMBOL_GPL(cfs_apply_workqueue_attrs);
-
 /* Linux v5.1-rc5 214d8ca6ee ("stacktrace: Provide common infrastructure")
  * CONFIG_ARCH_STACKWALK indicates that save_stack_trace_tsk symbol is not
  * exported. Use symbol_get() to find if save_stack_trace_tsk is available.
@@ -200,8 +188,6 @@ int __init cfs_arch_init(void)
 	task_dump_stack_t =
 		(void *)cfs_kallsyms_lookup_name("stack_trace_save_tsk");
 #endif
-	cfs_apply_workqueue_attrs_t =
-		(void *)cfs_kallsyms_lookup_name("apply_workqueue_attrs");
 #ifndef HAVE_XARRAY_SUPPORT
 	xarray_cachep = kmem_cache_create("xarray_cache",
 					  sizeof(struct xa_node), 0,

@@ -71,6 +71,15 @@ AS_IF([test "x$enable_panic_dumplog" = xyes], [
 ]) # LIBCFS_CONFIG_PANIC_DUMPLOG
 
 #
+# Preemptively check is not exported apply_workqueue_attrs()
+#
+AC_DEFUN([LIBCFS_EXPORT_APPLY_WORK_ATTRS], [
+LB_CHECK_EXPORT([apply_workqueue_attrs], [kernel/workqueue.c],
+	[AC_DEFINE(HAVE_APPLY_WORK_ATTRS, 1,
+		[apply_workqueue_attrs is exported by the kernel])])
+]) # LIBCFS_EXPORT_APPLY_WORK_ATTRS
+
+#
 # Kernel version 3.11 introduced ktime_get_ts64
 #
 AC_DEFUN([LIBCFS_SRC_KTIME_GET_TS64], [
@@ -2786,6 +2795,8 @@ AC_MSG_NOTICE([LibCFS kernel checks
 ==============================================================================])
 LIBCFS_CONFIG_PANIC_DUMPLOG
 
+# Misc - Export Check
+LIBCFS_EXPORT_APPLY_WORK_ATTRS
 # 4.6 - Export Check
 LIBCFS_EXPORT_KSET_FIND_OBJ
 # 5.0 - Export Check
