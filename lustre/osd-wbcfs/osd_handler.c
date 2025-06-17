@@ -40,12 +40,6 @@ struct work_struct flush_fput;
 atomic_t descriptors_cnt;
 unsigned int wbcfs_flush_descriptors_cnt = 5000;
 
-#ifdef HAVE_FLUSH_DELAYED_FPUT
-# define cfs_flush_delayed_fput() flush_delayed_fput()
-#else
-void (*cfs_flush_delayed_fput)(void);
-#endif /* HAVE_FLUSH_DELAYED_FPUT */
-
 static void osd_flush_fput(struct work_struct *work)
 {
 	/* flush file descriptors when too many files */
@@ -57,7 +51,7 @@ static void osd_flush_fput(struct work_struct *work)
 	 * doesn't need to exactly match the number of descriptors.
 	 */
 	atomic_set(&descriptors_cnt, 0);
-	cfs_flush_delayed_fput();
+	flush_delayed_fput();
 }
 
 static struct lu_object *osd_object_alloc(const struct lu_env *env,
@@ -435,7 +429,7 @@ static void osd_umount(const struct lu_env *env, struct osd_device *dev)
 	}
 
 	/* to be sure all delayed fput are finished. */
-	cfs_flush_delayed_fput();
+	flush_delayed_fput();
 
 	EXIT;
 }
@@ -650,12 +644,6 @@ static int __init osd_init(void)
 				 LUSTRE_OSD_WBCFS_NAME, &osd_device_type);
 	if (rc)
 		GOTO(out_memfs, rc);
-
-#ifndef HAVE_FLUSH_DELAYED_FPUT
-	if (unlikely(cfs_flush_delayed_fput == NULL))
-		cfs_flush_delayed_fput =
-			cfs_kallsyms_lookup_name("flush_delayed_fput");
-#endif
 
 	INIT_WORK(&flush_fput, osd_flush_fput);
 

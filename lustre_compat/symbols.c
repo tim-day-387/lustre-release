@@ -61,6 +61,16 @@ void sched_show_task(struct task_struct *p)
 EXPORT_SYMBOL_GPL(sched_show_task);
 #endif
 
+#ifndef HAVE_FLUSH_DELAYED_FPUT
+static void (*__flush_delayed_fput)(void);
+
+void flush_delayed_fput(void)
+{
+	__flush_delayed_fput();
+}
+EXPORT_SYMBOL_GPL(flush_delayed_fput);
+#endif
+
 static int (*__apply_workqueue_attrs)(struct workqueue_struct *wq,
 					  const struct workqueue_attrs *attrs);
 
@@ -85,6 +95,12 @@ int lustre_symbols_init(void)
 #ifndef HAVE_SCHED_SHOW_TASK
 	__sched_show_task = cfs_kallsyms_lookup_name("sched_show_task");
 	if (!__sched_show_task)
+		return -EINVAL;
+#endif
+
+#ifndef HAVE_FLUSH_DELAYED_FPUT
+	__flush_delayed_fput = cfs_kallsyms_lookup_name("flush_delayed_fput");
+	if (!__flush_delayed_fput)
 		return -EINVAL;
 #endif
 
