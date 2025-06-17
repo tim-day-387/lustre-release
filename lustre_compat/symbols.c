@@ -61,6 +61,16 @@ void sched_show_task(struct task_struct *p)
 EXPORT_SYMBOL_GPL(sched_show_task);
 #endif
 
+static int (*__apply_workqueue_attrs)(struct workqueue_struct *wq,
+					  const struct workqueue_attrs *attrs);
+
+int apply_workqueue_attrs(struct workqueue_struct *wq,
+			      const struct workqueue_attrs *attrs)
+{
+	return __apply_workqueue_attrs(wq, attrs);
+}
+EXPORT_SYMBOL_GPL(apply_workqueue_attrs);
+
 int lustre_symbols_init(void)
 {
 	int rc;
@@ -77,6 +87,10 @@ int lustre_symbols_init(void)
 	if (!__sched_show_task)
 		return -EINVAL;
 #endif
+
+	__apply_workqueue_attrs = cfs_kallsyms_lookup_name("apply_workqueue_attrs");
+	if (!__apply_workqueue_attrs)
+		return -EINVAL;
 
 	return 0;
 }

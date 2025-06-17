@@ -335,7 +335,7 @@ struct workqueue_struct *cfs_cpt_bind_workqueue(const char *wq_name,
 	if (mask && alloc_cpumask_var(&attrs.cpumask, GFP_KERNEL)) {
 		cpumask_copy(attrs.cpumask, *mask);
 		cpus_read_lock();
-		cfs_apply_workqueue_attrs(wq, &attrs);
+		apply_workqueue_attrs(wq, &attrs);
 		cpus_read_unlock();
 		free_cpumask_var(attrs.cpumask);
 	}
