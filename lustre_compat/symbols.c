@@ -51,6 +51,16 @@ static int find_kallsyms_lookup_name(void)
 }
 #endif
 
+#ifndef HAVE_FLUSH_DELAYED_FPUT
+static void (*__flush_delayed_fput)(void);
+
+void flush_delayed_fput(void)
+{
+	__flush_delayed_fput();
+}
+EXPORT_SYMBOL_GPL(flush_delayed_fput);
+#endif
+
 #ifndef HAVE_APPLY_WORK_ATTRS
 static int (*__apply_workqueue_attrs)(struct workqueue_struct *wq,
 					  const struct workqueue_attrs *attrs);
@@ -73,6 +83,12 @@ int lustre_symbols_init(void)
 
 	if (!cfs_kallsyms_lookup_name("kallsyms_lookup_name"))
 		return -EINVAL;
+
+#ifndef HAVE_FLUSH_DELAYED_FPUT
+	__flush_delayed_fput = cfs_kallsyms_lookup_name("flush_delayed_fput");
+	if (!__flush_delayed_fput)
+		return -EINVAL;
+#endif
 
 #ifndef HAVE_APPLY_WORK_ATTRS
 	__apply_workqueue_attrs = cfs_kallsyms_lookup_name("apply_workqueue_attrs");

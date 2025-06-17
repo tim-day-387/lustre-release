@@ -8183,12 +8183,6 @@ static int osd_shutdown(const struct lu_env *env, struct osd_device *o)
 	RETURN(0);
 }
 
-#ifdef HAVE_FLUSH_DELAYED_FPUT
-# define cfs_flush_delayed_fput() flush_delayed_fput()
-#else
-void (*cfs_flush_delayed_fput)(void);
-#endif /* HAVE_FLUSH_DELAYED_FPUT */
-
 static void osd_umount(const struct lu_env *env, struct osd_device *o)
 {
 	ENTRY;
@@ -8206,7 +8200,7 @@ static void osd_umount(const struct lu_env *env, struct osd_device *o)
 	}
 
 	/* to be sure all delayed fput are finished */
-	cfs_flush_delayed_fput();
+	flush_delayed_fput();
 
 	EXIT;
 }
@@ -8982,7 +8976,7 @@ static void osd_flush_fput(struct work_struct *work)
 	 * doesn't need to exactly match the number of descriptors.
 	 */
 	atomic_set(&descriptors_cnt, 0);
-	cfs_flush_delayed_fput();
+	flush_delayed_fput();
 }
 
 static int __init osd_init(void)
@@ -9043,12 +9037,6 @@ static int __init osd_init(void)
 
 		kobject_put(kobj);
 	}
-
-#ifndef HAVE_FLUSH_DELAYED_FPUT
-	if (unlikely(cfs_flush_delayed_fput == NULL))
-		cfs_flush_delayed_fput =
-			cfs_kallsyms_lookup_name("flush_delayed_fput");
-#endif
 
 	INIT_WORK(&flush_fput, osd_flush_fput);
 
