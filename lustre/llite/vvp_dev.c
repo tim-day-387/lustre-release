@@ -21,7 +21,6 @@
 #include <obd.h>
 #include "llite_internal.h"
 #include "vvp_internal.h"
-#include <linux/kallsyms.h>
 
 /*
  * Vvp device and device type functions.
@@ -247,11 +246,6 @@ struct lu_device_type vvp_device_type = {
 
 unsigned int (*vvp_account_page_dirtied)(struct page *page,
 					 struct address_space *mapping);
-#if !defined(FOLIO_MEMCG_LOCK_EXPORTED) && defined(HAVE_FOLIO_MEMCG_LOCK) && \
-     defined(HAVE_KALLSYMS_LOOKUP_NAME)
-void (*vvp_folio_memcg_lock)(struct folio *folio);
-void (*vvp_folio_memcg_unlock)(struct folio *folio);
-#endif
 
 /**
  * vvp_global_init() - init global resources required by the VVP layer
@@ -284,18 +278,6 @@ int vvp_global_init(void)
 		cfs_kallsyms_lookup_name("account_page_dirtied");
 #endif
 #endif
-
-#if !defined(FOLIO_MEMCG_LOCK_EXPORTED) && defined(HAVE_FOLIO_MEMCG_LOCK) && \
-     defined(HAVE_KALLSYMS_LOOKUP_NAME)
-	vvp_folio_memcg_lock = (void *)
-		cfs_kallsyms_lookup_name("folio_memcg_lock");
-	LASSERT(vvp_folio_memcg_lock);
-
-	vvp_folio_memcg_unlock = (void *)
-		cfs_kallsyms_lookup_name("folio_memcg_unlock");
-	LASSERT(vvp_folio_memcg_unlock);
-#endif
-
 	return 0;
 
 out_kmem:
