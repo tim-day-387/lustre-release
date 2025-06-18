@@ -16,11 +16,10 @@
 
 static void *(*__cfs_kallsyms_lookup_name)(const char *name);
 
-void *cfs_kallsyms_lookup_name(const char *name)
+static void *cfs_kallsyms_lookup_name(const char *name)
 {
 	return __cfs_kallsyms_lookup_name(name);
 }
-EXPORT_SYMBOL_GPL(cfs_kallsyms_lookup_name);
 
 #ifdef HAVE_KALLSYMS_LOOKUP_NAME
 static int find_kallsyms_lookup_name(void)
@@ -71,6 +70,24 @@ void flush_delayed_fput(void)
 EXPORT_SYMBOL_GPL(flush_delayed_fput);
 #endif
 
+#if !defined(FOLIO_MEMCG_LOCK_EXPORTED) && defined(HAVE_FOLIO_MEMCG_LOCK)
+void (*__folio_memcg_lock)(struct folio *folio);
+
+void folio_memcg_lock(struct folio *folio)
+{
+	__folio_memcg_lock(folio);
+}
+EXPORT_SYMBOL_GPL(folio_memcg_lock);
+
+void (*__folio_memcg_unlock)(struct folio *folio);
+
+void folio_memcg_unlock(struct folio *folio)
+{
+	__folio_memcg_unlock(folio);
+}
+EXPORT_SYMBOL_GPL(folio_memcg_unlock);
+#endif
+
 static int (*__apply_workqueue_attrs)(struct workqueue_struct *wq,
 					  const struct workqueue_attrs *attrs);
 
@@ -101,6 +118,16 @@ int lustre_symbols_init(void)
 #ifndef HAVE_FLUSH_DELAYED_FPUT
 	__flush_delayed_fput = cfs_kallsyms_lookup_name("flush_delayed_fput");
 	if (!__flush_delayed_fput)
+		return -EINVAL;
+#endif
+
+#if !defined(FOLIO_MEMCG_LOCK_EXPORTED) && defined(HAVE_FOLIO_MEMCG_LOCK)
+	__folio_memcg_lock = cfs_kallsyms_lookup_name("folio_memcg_lock");
+	if (!__folio_memcg_lock)
+		return -EINVAL;
+
+	__folio_memcg_unlock = cfs_kallsyms_lookup_name("folio_memcg_unlock");
+	if (!__folio_memcg_unlock)
 		return -EINVAL;
 #endif
 

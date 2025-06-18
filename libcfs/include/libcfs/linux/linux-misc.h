@@ -22,10 +22,6 @@
 #include <linux/mutex.h>
 #include <linux/user_namespace.h>
 #include <linux/uio.h>
-#include <linux/kallsyms.h>
-
-/* TODO: This will soon be private... */
-void *cfs_kallsyms_lookup_name(const char *name);
 
 /*
  * Since 4.20 commit 00e23707442a75b404392cef1405ab4fd498de6b
