@@ -996,10 +996,8 @@ static inline void ll_account_page_dirtied(struct page *page,
 
 	account_page_dirtied(page, mapping, memcg);
 	mem_cgroup_end_page_stat(memcg);
-#elif defined(HAVE_ACCOUNT_PAGE_DIRTIED_EXPORT)
-	account_page_dirtied(page, mapping);
 #else
-	vvp_account_page_dirtied(page, mapping);
+	account_page_dirtied(page, mapping);
 #endif
 	ll_page_tag_dirty(page, mapping);
 }
@@ -1016,19 +1014,14 @@ static inline void ll_account_page_dirtied(struct page *page,
 static void vvp_set_batch_dirty(struct folio_batch *fbatch)
 {
 	struct page *page = fbatch_at_pg(fbatch, 0, 0);
-	int count = folio_batch_count(fbatch);
-	int i;
-#if !defined(HAVE_FOLIO_BATCH) || !defined(HAVE_FILEMAP_GET_FOLIOS) ||	\
-	defined(HAVE_KALLSYMS_LOOKUP_NAME)
-	int pg, npgs;
-#endif
-#ifdef HAVE_KALLSYMS_LOOKUP_NAME
 	struct address_space *mapping = page->mapping;
-	unsigned long flags;
+	int count = folio_batch_count(fbatch);
 	unsigned long skip_pages = 0;
-	int pgno;
+	unsigned long flags;
 	int dirtied = 0;
-#endif
+	int pg, npgs;
+	int pgno;
+	int i;
 
 	ENTRY;
 
@@ -1037,31 +1030,6 @@ static void vvp_set_batch_dirty(struct folio_batch *fbatch)
 		 "mapping must be set. page %px, page->private (cl_page) %px\n",
 		 page, (void *) page->private);
 
-	/*
-	 * kernels without HAVE_KALLSYMS_LOOKUP_NAME also don't have
-	 * account_dirty_page exported, and if we can't access that symbol,
-	 * we can't do page dirtying in batch (taking the xarray lock only once)
-	 * so we just fall back to a looped call to __set_page_dirty_nobuffers
-	 */
-#ifndef HAVE_ACCOUNT_PAGE_DIRTIED_EXPORT
-	if (!vvp_account_page_dirtied) {
-		for (i = 0; i < count; i++) {
-#if defined(HAVE_FOLIO_BATCH) && defined(HAVE_FILEMAP_GET_FOLIOS)
-			filemap_dirty_folio(page->mapping, fbatch->folios[i]);
-#else
-			npgs = fbatch_at_npgs(fbatch, i);
-			for (pg = 0; pg < npgs; pg++) {
-				page = fbatch_at_pg(fbatch, i, pg);
-				__set_page_dirty_nobuffers(page);
-			}
-#endif
-		}
-		EXIT;
-	}
-#endif
-
-	/* account_page_dirtied is available directly or via kallsyms */
-#ifdef HAVE_KALLSYMS_LOOKUP_NAME
 	for (pgno = i = 0; i < count; i++) {
 		npgs = fbatch_at_npgs(fbatch, i);
 		for (pg = 0; pg < npgs; pg++) {
@@ -1120,7 +1088,7 @@ static void vvp_set_batch_dirty(struct folio_batch *fbatch)
 		/* !PageAnon && !swapper_space */
 		__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
 	}
-#endif
+
 	EXIT;
 }
 

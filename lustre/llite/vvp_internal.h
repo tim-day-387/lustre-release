@@ -258,13 +258,16 @@ struct lu_object *vvp_object_alloc(const struct lu_env *env,
 int vvp_global_init(void);
 void vvp_global_fini(void);
 
-#if !defined(HAVE_ACCOUNT_PAGE_DIRTIED_EXPORT) || \
-defined(HAVE_KALLSYMS_LOOKUP_NAME)
-extern unsigned int (*vvp_account_page_dirtied)(struct page *page,
-						struct address_space *mapping);
+#ifndef HAVE_ACCOUNT_PAGE_DIRTIED_EXPORT
+unsigned int account_page_dirtied(struct page *page,
+				  struct address_space *mapping);
 #endif
 
 #ifdef HAVE_FOLIO_MEMCG_LOCK
+#ifndef FOLIO_MEMCG_LOCK_EXPORTED
+void folio_memcg_lock(struct folio *folio);
+void folio_memcg_unlock(struct folio *folio);
+#endif
 #define folio_memcg_lock_page(page)	folio_memcg_lock(page_folio((page)))
 #define folio_memcg_unlock_page(page)	folio_memcg_unlock(page_folio((page)))
 #elif defined HAVE_LOCK_PAGE_MEMCG

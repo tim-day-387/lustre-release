@@ -78,6 +78,18 @@ void folio_memcg_unlock(struct folio *folio)
 EXPORT_SYMBOL_GPL(folio_memcg_unlock);
 #endif
 
+#ifndef HAVE_ACCOUNT_PAGE_DIRTIED_EXPORT
+unsigned int (*__account_page_dirtied)(struct page *page,
+				       struct address_space *mapping);
+
+unsigned int account_page_dirtied(struct page *page,
+				  struct address_space *mapping)
+{
+	return __account_page_dirtied(page, mapping);
+}
+EXPORT_SYMBOL_GPL(account_page_dirtied);
+#endif
+
 #ifndef HAVE_APPLY_WORK_ATTRS
 static int (*__apply_workqueue_attrs)(struct workqueue_struct *wq,
 					  const struct workqueue_attrs *attrs);
@@ -114,6 +126,12 @@ int lustre_symbols_init(void)
 
 	__folio_memcg_unlock = cfs_kallsyms_lookup_name("folio_memcg_unlock");
 	if (!__folio_memcg_unlock)
+		return -EINVAL;
+#endif
+
+#ifndef HAVE_ACCOUNT_PAGE_DIRTIED_EXPORT
+	__account_page_dirtied = cfs_kallsyms_lookup_name("account_page_dirtied");
+	if (!__account_page_dirtied)
 		return -EINVAL;
 #endif
 
