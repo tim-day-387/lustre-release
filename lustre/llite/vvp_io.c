@@ -984,26 +984,6 @@ static inline void ll_page_tag_dirty(struct page *page,
 #endif
 }
 
-/*
- * Kernels 4.2 - 4.5 pass memcg argument to account_page_dirtied()
- * Kernel v5.2-5678-gac1c3e4 no longer exports account_page_dirtied
- */
-static inline void ll_account_page_dirtied(struct page *page,
-					   struct address_space *mapping)
-{
-#ifdef HAVE_ACCOUNT_PAGE_DIRTIED_3ARGS
-	struct mem_cgroup *memcg = mem_cgroup_begin_page_stat(page);
-
-	account_page_dirtied(page, mapping, memcg);
-	mem_cgroup_end_page_stat(memcg);
-#elif defined(HAVE_ACCOUNT_PAGE_DIRTIED_EXPORT)
-	account_page_dirtied(page, mapping);
-#else
-	vvp_account_page_dirtied(page, mapping);
-#endif
-	ll_page_tag_dirty(page, mapping);
-}
-
 /* Taken from kernel set_page_dirty, __set_page_dirty_nobuffers
  * Last change to this area: b93b016313b3ba8003c3b8bb71f569af91f19fc7
  *
@@ -1018,17 +998,6 @@ static void vvp_set_batch_dirty(struct folio_batch *fbatch)
 	struct page *page = fbatch_at_pg(fbatch, 0, 0);
 	int count = folio_batch_count(fbatch);
 	int i;
-#if !defined(HAVE_FOLIO_BATCH) || !defined(HAVE_FILEMAP_GET_FOLIOS) ||	\
-	defined(HAVE_KALLSYMS_LOOKUP_NAME)
-	int pg, npgs;
-#endif
-#ifdef HAVE_KALLSYMS_LOOKUP_NAME
-	struct address_space *mapping = page->mapping;
-	unsigned long flags;
-	unsigned long skip_pages = 0;
-	int pgno;
-	int dirtied = 0;
-#endif
 
 	ENTRY;
 
@@ -1037,90 +1006,9 @@ static void vvp_set_batch_dirty(struct folio_batch *fbatch)
 		 "mapping must be set. page %px, page->private (cl_page) %px\n",
 		 page, (void *) page->private);
 
-	/*
-	 * kernels without HAVE_KALLSYMS_LOOKUP_NAME also don't have
-	 * account_dirty_page exported, and if we can't access that symbol,
-	 * we can't do page dirtying in batch (taking the xarray lock only once)
-	 * so we just fall back to a looped call to __set_page_dirty_nobuffers
-	 */
-#ifndef HAVE_ACCOUNT_PAGE_DIRTIED_EXPORT
-	if (!vvp_account_page_dirtied) {
-		for (i = 0; i < count; i++) {
-#if defined(HAVE_FOLIO_BATCH) && defined(HAVE_FILEMAP_GET_FOLIOS)
-			filemap_dirty_folio(page->mapping, fbatch->folios[i]);
-#else
-			npgs = fbatch_at_npgs(fbatch, i);
-			for (pg = 0; pg < npgs; pg++) {
-				page = fbatch_at_pg(fbatch, i, pg);
-				__set_page_dirty_nobuffers(page);
-			}
-#endif
-		}
-		EXIT;
-	}
-#endif
+	for (i = 0; i < count; i++)
+		filemap_dirty_folio(page->mapping, fbatch->folios[i]);
 
-	/* account_page_dirtied is available directly or via kallsyms */
-#ifdef HAVE_KALLSYMS_LOOKUP_NAME
-	for (pgno = i = 0; i < count; i++) {
-		npgs = fbatch_at_npgs(fbatch, i);
-		for (pg = 0; pg < npgs; pg++) {
-			page = fbatch_at_pg(fbatch, i, pg);
-
-			ClearPageReclaim(page);
-
-			folio_memcg_lock_page(page);
-			if (TestSetPageDirty(page)) {
-				/* page is already dirty .. no extra work needed
-				 * set a flag for the i'th page to be skipped
-				 */
-				folio_memcg_unlock_page(page);
-				skip_pages |= (1ul << pgno++);
-				LASSERTF(pgno <= BITS_PER_LONG,
-					 "Limit exceeded pgno: %d/%d\n", pgno,
-					 BITS_PER_LONG);
-			}
-		}
-	}
-
-	ll_xa_lock_irqsave(&mapping->i_pages, flags);
-
-	/* Notes on differences with __set_page_dirty_nobuffers:
-	 * 1. We don't need to call page_mapping because we know this is a page
-	 * cache page.
-	 * 2. We have the pages locked, so there is no need for the careful
-	 * mapping/mapping2 dance.
-	 * 3. No mapping is impossible. (Race w/truncate mentioned in
-	 * dirty_nobuffers should be impossible because we hold the page lock.)
-	 * 4. All mappings are the same because i/o is only to one file.
-	 */
-	for (pgno = i = 0; i < count; i++) {
-		npgs = fbatch_at_npgs(fbatch, i);
-		for (pg = 0; pg < npgs; pg++) {
-			page = fbatch_at_pg(fbatch, i, pg);
-			/* if the i'th page was unlocked above, skip it here */
-			if ((skip_pages >> pgno++) & 1)
-				continue;
-
-			LASSERTF(page->mapping == mapping,
-				 "all pages must have the same mapping.  page %px, mapping %px, first mapping %px\n",
-				 page, page->mapping, mapping);
-			WARN_ON_ONCE(!PagePrivate(page) && !PageUptodate(page));
-			ll_account_page_dirtied(page, mapping);
-			dirtied++;
-			folio_memcg_unlock_page(page);
-		}
-	}
-	ll_xa_unlock_irqrestore(&mapping->i_pages, flags);
-
-	CDEBUG(D_VFSTRACE, "mapping %p, count %d, dirtied %d\n", mapping,
-	       count, dirtied);
-
-	if (mapping->host && dirtied) {
-		/* !PageAnon && !swapper_space */
-		__mark_inode_dirty(mapping->host, I_DIRTY_PAGES);
-	}
-#endif
 	EXIT;
 }
 
