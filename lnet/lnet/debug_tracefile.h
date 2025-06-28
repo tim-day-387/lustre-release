@@ -169,4 +169,10 @@ do {									\
 	__LASSERT(page_count(tage->page) > 0);				\
 } while (0)
 
+int libcfs_init(void);
+void libcfs_exit(void);
+
+extern char *cpu_pattern;
+extern int cpu_npartitions;
+
 #endif /* __LIBCFS_TRACEFILE_H__ */

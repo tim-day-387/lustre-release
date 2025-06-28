@@ -263,12 +263,12 @@ extern struct page *llcrypt_alloc_bounce_page(gfp_t gfp_flags);
 extern const struct dentry_operations llcrypt_d_ops;
 
 extern void __printf(3, 4) __cold
-llcrypt_msg(const struct inode *inode, int mask, const char *fmt, ...);
+llcrypt_msg(const struct inode *inode, bool err, const char *fmt, ...);
 
 #define llcrypt_warn(inode, fmt, ...)		\
-	llcrypt_msg((inode), D_SEC, fmt, ##__VA_ARGS__)
+	llcrypt_msg((inode), false, fmt, ##__VA_ARGS__)
 #define llcrypt_err(inode, fmt, ...)		\
-	llcrypt_msg((inode), D_ERROR, fmt, ##__VA_ARGS__)
+	llcrypt_msg((inode), true, fmt, ##__VA_ARGS__)
 
 #define LLCRYPT_MAX_IV_SIZE	32
 

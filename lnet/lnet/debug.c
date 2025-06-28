@@ -24,7 +24,7 @@
 #ifdef HAVE_PANIC_NOTIFIER_H
 #include <linux/panic_notifier.h>
 #endif
-#include "tracefile.h"
+#include "debug_tracefile.h"
 
 static char debug_file_name[1024];
 

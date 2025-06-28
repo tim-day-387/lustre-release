@@ -17,5 +17,4 @@ DIST_SUBDIRS = linux crypto
 modulenet_DATA := libcfs.ko
 
 MOSTLYCLEANFILES := @MOSTLYCLEANFILES@ linux/*.o libcfs crypto/*.o
-EXTRA_DIST := $(libcfs-all-objs:%.o=%.c) tracefile.h \
-	      fail.c
+EXTRA_DIST := $(libcfs-all-objs:%.o=%.c)
