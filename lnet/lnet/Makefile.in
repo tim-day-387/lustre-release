@@ -12,6 +12,7 @@ lnet-objs += lib-me.o lib-msg.o lib-md.o lib-ptl.o
 lnet-objs += lib-socket.o lib-move.o module.o lo.o
 lnet-objs += router.o lnet_debugfs.o acceptor.o peer.o net_fault.o udsp.o
 lnet-objs += lnet-crypto.o adler.o
+lnet-objs += debug_module.o debug.o debug_fail.o debug_tracefile.o
 lnet-objs += $(lnet-objs-y)
 
 CFLAGS_lnet_rdma.o += -I @GDS_PATH@ -I@CUDA_PATH@

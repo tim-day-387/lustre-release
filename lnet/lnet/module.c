@@ -16,6 +16,8 @@
 #include <uapi/linux/lnet/lnet-dlc.h>
 #include <uapi/linux/lustre/lustre_ver.h>
 
+#include "debug_tracefile.h"
+
 static int config_on_load = 0;
 module_param(config_on_load, int, 0444);
 MODULE_PARM_DESC(config_on_load, "configure network at module load");
@@ -419,6 +421,10 @@ static int __init lnet_init(void)
 	int rc;
 
 	ENTRY;
+	rc = libcfs_init();
+	if (rc)
+		return rc;
+
 	rc = libcfs_setup();
 	if (rc)
 		return rc;
@@ -474,6 +480,7 @@ static void __exit lnet_exit(void)
 	lnet_lib_exit();
 	cfs_crypto_unregister();
 	cfs_cpu_fini();
+	libcfs_exit();
 }
 
 MODULE_AUTHOR("OpenSFS, Inc. <http://www.lustre.org/>");

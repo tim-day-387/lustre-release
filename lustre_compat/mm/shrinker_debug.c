@@ -227,11 +227,10 @@ void ll_shrinker_free(struct shrinker *shrinker)
 #endif /* !HAVE_SHRINKER_ALLOC */
 
 #ifndef CONFIG_SHRINKER_DEBUG
-	LIBCFS_FREE_PRE(s, sizeof(*s), "kfreed");
 	kfree(s);
 #else
 #ifndef HAVE_SHRINKER_ALLOC
-	CFS_FREE_PTR(shrinker);
+	kfree(shrinker);
 #endif
 #endif
 
@@ -260,7 +259,7 @@ struct shrinker *ll_shrinker_create(struct ll_shrinker_ops *ops,
 	shrinker = shrinker_alloc(flags, "%pV", &vaf);
 	va_end(args);
  #ifndef CONFIG_SHRINKER_DEBUG
-	CFS_ALLOC_PTR(s);
+	s = kmalloc(sizeof(*s), GFP_NOFS);
 	if (!s) {
 		shrinker_free(shrinker);
 		return ERR_PTR(-ENOMEM);
@@ -271,14 +270,14 @@ struct shrinker *ll_shrinker_create(struct ll_shrinker_ops *ops,
  #endif
 #else /* !HAVE_SHRINKER_ALLOC */
  #ifndef CONFIG_SHRINKER_DEBUG
-	CFS_ALLOC_PTR(s);
+	s = kmalloc(sizeof(*s), GFP_NOFS);
 	if (!s)
 		return ERR_PTR(-ENOMEM);
 
 	s->name = kvasprintf_const(GFP_KERNEL, fmt, args);
 	shrinker = &s->ll_shrinker;
  #else
-	CFS_ALLOC_PTR(shrinker);
+	shrinker = kmalloc(sizeof(*shrinker), GFP_NOFS);
 	if (!shrinker)
 		return ERR_PTR(-ENOMEM);
  #endif

@@ -15,7 +15,7 @@
  */
 
 #define DEBUG_SUBSYSTEM S_LNET
-#include "tracefile.h"
+#include "debug_tracefile.h"
 
 #include <linux/ctype.h>
 #include <linux/fs.h>
