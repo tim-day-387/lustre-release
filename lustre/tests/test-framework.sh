@@ -1061,7 +1061,7 @@ load_lnet() {
 		echo "libcfs will create CPU partition based on online CPUs"
 	fi
 
-	load_module ../libcfs/libcfs/libcfs
+	load_module ../lustre_compat/libcfs
 	# Prevent local MODOPTS_LIBCFS being passed as part of environment
 	# variable to remote nodes
 	unset MODOPTS_LIBCFS
@@ -7610,7 +7610,7 @@ run_test() {
 
 log() {
 	echo "$*" >&2
-	load_module ../libcfs/libcfs/libcfs
+	load_module ../lustre_compat/libcfs
 
 	local MSG="$*"
 	# Get rid of '

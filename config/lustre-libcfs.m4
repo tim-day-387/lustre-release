@@ -2853,19 +2853,3 @@ AS_IF([test "x$enable_libpthread" = xyes], [
 ])
 AC_SUBST(PTHREAD_LIBS)
 ]) # LIBCFS_CONFIGURE
-
-#
-# LIBCFS_CONFIG_FILES
-#
-# files that should be generated with AC_OUTPUT
-#
-AC_DEFUN([LIBCFS_CONFIG_FILES], [
-AC_CONFIG_FILES([
-libcfs/Makefile
-libcfs/autoMakefile
-libcfs/libcfs/Makefile
-libcfs/libcfs/autoMakefile
-libcfs/libcfs/linux/Makefile
-libcfs/libcfs/crypto/Makefile
-])
-]) # LIBCFS_CONFIG_FILES
