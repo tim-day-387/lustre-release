@@ -2863,12 +2863,6 @@ AC_DEFUN([LIBCFS_CONFIG_FILES], [
 AC_CONFIG_FILES([
 libcfs/Makefile
 libcfs/autoMakefile
-libcfs/include/Makefile
-libcfs/include/libcfs/Makefile
-libcfs/include/uapi/Makefile
-libcfs/include/libcfs/linux/Makefile
-libcfs/include/libcfs/crypto/Makefile
-libcfs/include/uapi/linux/Makefile
 libcfs/libcfs/Makefile
 libcfs/libcfs/autoMakefile
 libcfs/libcfs/linux/Makefile
