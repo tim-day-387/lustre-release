@@ -44,7 +44,7 @@ function rules_setup() {
 
 	cat > "$path/Rules" <<EOF
 EXTRA_CFLAGS := \$(EXTRA_PRE_CFLAGS)
-EXTRA_CFLAGS += -include $KPATH/include/lustre/undef.h
+#EXTRA_CFLAGS += -include $KPATH/include/lustre/undef.h
 EXTRA_CFLAGS += -include $KPATH/include/lustre/config.h
 EXTRA_CFLAGS += -I$KPATH/include/libcfs/
 EXTRA_CFLAGS += -I$KPATH/include/libcfs/libcfs/
@@ -66,35 +66,10 @@ EOF
 
 function compat_clone() {
 	# TODO: This should be optional... and not in net/
-	cp -R lustre_compat/include "$KERNEL_DIR/include/lustre_compat"
+	cp -R include/libcfs "$KERNEL_DIR/include/libcfs"
+	cp -R include/uapi/linux/llcrypt.h "$KERNEL_DIR/include/uapi/linux/"
+	cp -R include/lustre_compat "$KERNEL_DIR/include/lustre_compat"
 	cp -R lustre_compat "$KERNEL_DIR/net/"
-}
-
-function libcfs_copy_tree() {
-	cp -R libcfs/include "$KERNEL_DIR/include/libcfs"
-	mkdir -p "$KERNEL_DIR/net/libcfs/libcfs"
-	cp -R libcfs/libcfs "$KERNEL_DIR/net/libcfs/"
-	cp libcfs/Makefile "$KERNEL_DIR/net/libcfs/Makefile"
-}
-
-function libcfs_clone() {
-	libcfs_copy_tree
-
-	rules_setup "$KERNEL_DIR/net/libcfs/" CONFIG_LIBCFS
-
-	cat > "$KERNEL_DIR/net/libcfs/Kconfig" <<EOF
-config LIBCFS
-	tristate "LIBCFS support"
-	help
-	  This is LIBCFS.
-
-	  To compile this LIBCFS support as a module, choose M here.
-
-	  If unsure, say N.
-EOF
-
-	add_after "$KERNEL_DIR/net/Kconfig" 'if NET' 'source "net/libcfs/Kconfig"'
-	add_after "$KERNEL_DIR/net/Makefile" 'endif' 'obj-$(CONFIG_LIBCFS) += libcfs/'
 }
 
 function lnet_copy_tree() {
@@ -139,7 +114,7 @@ function find_kernel_dirs() {
 
 function setup_lustre_config() {
 	cp config.h "$KERNEL_DIR/include/lustre/"
-	cp undef.h "$KERNEL_DIR/include/lustre/"
+	cp undef.h "$KERNEL_DIR/include/lustre/" || true
 	sed -i 's/.*LUSTRE_VERSION_STRING.*/#define LUSTRE_VERSION_STRING "in-kernel"/g' "$KERNEL_DIR/include/lustre/config.h"
 }
 
@@ -175,7 +150,7 @@ config LUSTRE
 EOF
 
 	add_after "$KERNEL_DIR/fs/Kconfig" 'if BLOCK' 'source "fs/lustre/Kconfig"'
-	add_after "$KERNEL_DIR/fs/Makefile" 'endif' 'obj-$(CONFIG_LUSTRE) += lustre/'
+	echo 'obj-$(CONFIG_LUSTRE) += lustre/' >> "$KERNEL_DIR/fs/Makefile"
 }
 
 function clean_lustre() {
@@ -189,7 +164,6 @@ function clean_linux() {
 
 	rm -rf "$KERNEL_DIR/include/lustre" "$KERNEL_DIR/fs/lustre"
 	rm -rf "$KERNEL_DIR/include/lnet" "$KERNEL_DIR/net/lnet"
-	rm -rf "$KERNEL_DIR/include/libcfs" "$KERNEL_DIR/net/libcfs"
 	rm -rf "$KERNEL_DIR/include/lustre_compat" "$KERNEL_DIR/net/lustre_compat"
 
 	cd "$KERNEL_DIR"
@@ -199,14 +173,41 @@ function clean_linux() {
 	cd "$old"
 }
 
+function cbi_clean() {
+	[[ "$#" -eq 2 ]] || cbi_usage
+	stat "$2" 1> /dev/null 2> /dev/null || cbi_usage
+
+	KERNEL_DIR="$2"
+	KPATH="$(readlink -e "$KERNEL_DIR")"
+
+	clean_linux
+}
+
 function cbi_usage() {
 	less -F <<EOF
 Usage: ${0##*/} <linux source tree>
 
 Port Lustre to the native Linux build system
+	clean         Clean the kernel tree.
 	help          List all possible commands.
 EOF
 	exit
+}
+
+function swap_symbols() {
+    local old_sym="$1"
+    local new_sym="$2"
+    echo "SWAP $1 $2 in $KERNEL_DIR"
+
+    find "$KERNEL_DIR/net/lnet" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/fs/lustre" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/include" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+}
+
+function swap_all_symbols() {
+    swap_symbols libcfs_vfree_atomic vfree_atomic
+    swap_symbols cfs_kernel_write kernel_write
+    swap_symbols cfs_totalram_pages totalram_pages
 }
 
 function cbi_copy_builtin() {
@@ -224,9 +225,9 @@ function cbi_copy_builtin() {
 	clean_lustre
 	clean_linux
 	compat_clone
-	libcfs_clone
 	lnet_clone
 	lustre_clone
+	swap_all_symbols
 
 	echo "$0: done. now you can build the kernel with Lustre support." >&2
 }
@@ -235,6 +236,7 @@ function cbi_copy_builtin() {
 for arg in "$@"; do
 	shift
 	case "$arg" in
+		clean) cbi_clean "$arg" "$@";;
 		help) cbi_usage;;
 		*) cbi_copy_builtin "$arg" "$@";;
 	esac
