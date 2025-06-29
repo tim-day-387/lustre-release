@@ -15,7 +15,6 @@ SUBDIRS := @LDISKFS_SUBDIR@ \
 	@LUSTREIOKIT_SUBDIR@ \
 	Documentation \
 	lib \
-	libcfs \
 	lnet \
 	lustre
 
@@ -23,7 +22,6 @@ DIST_SUBDIRS := ldiskfs \
 	lustre-iokit \
 	Documentation \
 	lib \
-	libcfs \
 	lnet \
 	lustre \
 	config
