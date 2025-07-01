@@ -32,16 +32,11 @@ struct ll_shrinker {
 };
 #endif
 
-static inline void ll_shrinker_free(struct shrinker *shrinker)
-{
-}
+void ll_shrinker_free(struct shrinker *shrinker);
 
 /* allocate and register a shrinker, return should be checked with IS_ERR() */
-static inline struct shrinker *ll_shrinker_create(struct ll_shrinker_ops *ops,
-						  unsigned int flags,
-						  const char *fmt, ...)
-{
-	return (struct shrinker *) 0x5a5a5a5a;
-}
+struct shrinker *ll_shrinker_create(struct ll_shrinker_ops *ops,
+				    unsigned int flags,
+				    const char *fmt, ...);
 
 #endif /* _LINUX_SHRINKER_LUSTRE_H */
