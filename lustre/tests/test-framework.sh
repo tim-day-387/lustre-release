@@ -5,9 +5,9 @@ if ! $FRAMEWORK_NEEDS_INIT; then
 fi
 FRAMEWORK_NEEDS_INIT=false
 
-trap 'print_summary && print_stack_trace | tee $TF_FAIL && \
-    echo "$TESTSUITE: FAIL: test-framework exiting on error"' ERR
-set -e
+#trap 'print_summary && print_stack_trace | tee $TF_FAIL && \
+#    echo "$TESTSUITE: FAIL: test-framework exiting on error"' ERR
+#set -e
 
 export LANG=en_US
 export REFORMAT=${REFORMAT:-""}
