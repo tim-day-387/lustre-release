@@ -96,7 +96,7 @@ int apply_workqueue_attrs(struct workqueue_struct *wq,
 {
 	return __apply_workqueue_attrs(wq, attrs);
 }
-EXPORT_SYMBOL_GPL(apply_workqueue_attrs);
+//EXPORT_SYMBOL_GPL(apply_workqueue_attrs);
 
 int lustre_symbols_init(void)
 {
