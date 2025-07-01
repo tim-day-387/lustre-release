@@ -925,6 +925,10 @@ load_module() {
 	local optvar
 	local mod
 
+	if [[ $module =~ "lustre_compat" ]]; then
+		return
+	fi
+
 	for mod in $(lsmod | awk '{ print $1; }'); do
 		module_is_loaded_aa[${mod//-/_}]=true
 	done
@@ -989,19 +993,7 @@ load_module() {
 
 	[ $# -gt 0 ] && echo "${module} options: '$*'"
 
-	# Note that insmod will ignore anything in modprobe.conf, which is why
-	# we're passing options on the command-line. If $path does not exist
-	# then we must be testing a "make install" or"rpm" installation. Also
-	# note that failing to load ptlrpc_gss is not considered fatal.
-	if [[ -n "$path" ]]; then
-		lustre_insmod $path "$@"
-	elif [[ "$base" == ptlrpc_gss ]]; then
-		if ! modprobe $base "$@" 2>/dev/null; then
-			echo "gss/krb5 is not supported"
-		fi
-	else
-		modprobe $base "$@"
-	fi
+	modprobe $base "$@"
 }
 
 do_lnetctl() {
