@@ -207,6 +207,7 @@ function swap_symbols() {
 function swap_all_symbols() {
     swap_symbols libcfs_vfree_atomic vfree_atomic
     swap_symbols cfs_kernel_write kernel_write
+    swap_symbols cfs_kernel_read kernel_read
     swap_symbols cfs_totalram_pages totalram_pages
 }
 
