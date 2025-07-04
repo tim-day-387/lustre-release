@@ -1,0 +1,14 @@
+# SPDX-License-Identifier: GPL-2.0
+
+#
+# This file is part of Lustre, http://www.lustre.org/
+#
+
+MODULES := lnet_host lnet_target
+
+lnet_host-objs := host.o common.o
+lnet_target-objs := target.o common.o
+
+default: all
+
+@INCLUDE_RULES@

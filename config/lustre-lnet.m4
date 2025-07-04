@@ -1486,6 +1486,8 @@ lnet/lnet/Makefile
 lnet/lnet/autoMakefile
 lnet/selftest/Makefile
 lnet/selftest/autoMakefile
+lnet/lnet_blk/Makefile
+lnet/lnet_blk/autoMakefile
 lnet/utils/Makefile
 lnet/utils/lnetconfig/Makefile
 ])

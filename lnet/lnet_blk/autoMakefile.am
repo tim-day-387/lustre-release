@@ -1,0 +1,15 @@
+# SPDX-License-Identifier: GPL-2.0
+
+#
+# This file is part of Lustre, http://www.lustre.org/
+#
+
+if MODULES
+if LINUX
+modulenet_DATA = lnet_host.ko lnet_target.ko
+endif # LINUX
+endif # MODULES
+
+EXTRA_DIST := $(lnet_host-objs:%.o=%.c) $(lnet_target-objs:%.o=%.c)
+
+MOSTLYCLEANFILES = @MOSTLYCLEANFILES@

@@ -1420,6 +1420,31 @@ unlock:
 }
 EXPORT_SYMBOL(LNetAddPeer);
 
+/* TODO @timday: There should be a better way? */
+void LNetLocalPrimaryNID(struct lnet_nid *nid)
+{
+	struct lnet_net *net;
+	struct lnet_ni *ni;
+
+	/* Find a local NID to give LNetPrimaryNID */
+	lnet_net_lock(0);
+
+	list_for_each_entry(net, &the_lnet.ln_nets, net_list) {
+		list_for_each_entry(ni, &net->net_ni_list, ni_netlist) {
+			if (!nid_is_lo0(&ni->ni_nid)) {
+				memcpy(nid, &ni->ni_nid,
+				       sizeof(struct lnet_nid));
+				goto out;
+			}
+		}
+	}
+out:
+	lnet_net_unlock(0);
+
+	LNetPrimaryNID(nid);
+}
+EXPORT_SYMBOL(LNetLocalPrimaryNID);
+
 void LNetPrimaryNID(struct lnet_nid *nid)
 {
 	struct lnet_peer *lp;
