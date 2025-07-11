@@ -273,7 +273,7 @@ static int lustre_device_done(struct netlink_callback *cb)
 
 /* target_obd handling */
 struct lu_tgt_list {
-	char			ltl_src[MAX_OBD_NAME * 4];
+	char			ltl_src[MAX_OBD_NAME * 3];
 	struct lu_tgt_descs	*ltl_desc;
 };
 
