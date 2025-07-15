@@ -63,12 +63,12 @@ static int LNetBlkPostActiveRdma(struct lnet_blk_rdma *rdma)
 	lnet_pid4_to_pid(peer4, &peer);
 
 	options |= LNET_MD_MANAGE_REMOTE | LNET_MD_KIOV;
-	md.threshold = 2;
-	md.options = options & ~(LNET_MD_OP_PUT | LNET_MD_OP_GET);
-	md.user_ptr = rdma;
-	md.start = rdma->ln_iov;
-	md.length = rdma->ln_iov_cnt;
-	md.handler = LNetIO_ev_handler;
+	md.umd_threshold = 2;
+	md.umd_options = options & ~(LNET_MD_OP_PUT | LNET_MD_OP_GET);
+	md.umd_user_ptr = rdma;
+	md.umd_start = rdma->ln_iov;
+	md.umd_length = rdma->ln_iov_cnt;
+	md.umd_handler = LNetIO_ev_handler;
 
 	rc = LNetMDBind(&md, LNET_UNLINK, mdh);
 	if (rc) {

@@ -43,12 +43,12 @@ static int LNetBlkPostPassiveRdma(struct lnet_blk_rdma *rdma)
 	}
 
 	options |= LNET_MD_MANAGE_REMOTE;
-	md.threshold = LNET_MD_THRESH_INF;
-	md.options = options | LNET_MD_KIOV;
-	md.user_ptr = rdma;
-	md.start = rdma->ln_iov;
-	md.length = npages;
-	md.handler = LNetIO_ev_handler;
+	md.umd_threshold = LNET_MD_THRESH_INF;
+	md.umd_options = options | LNET_MD_KIOV;
+	md.umd_user_ptr = rdma;
+	md.umd_start = rdma->ln_iov;
+	md.umd_length = npages;
+	md.umd_handler = LNetIO_ev_handler;
 
 	rc = LNetMDAttach(me, &md, LNET_RETAIN, mdh);
 	if (rc) {
