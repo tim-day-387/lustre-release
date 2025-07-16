@@ -233,12 +233,101 @@ end_request:
 	return BLK_STS_OK;
 }
 
+static void lnet_blk_queue_rqs(struct rq_list *rqlist)
+{
+	struct lnet_blk_rdma *rdma = NULL;
+	struct rq_list requeue_list = { };
+	struct request *rq;
+	int rq_count = 0;
+
+	rdma = mempool_alloc(lnet_blk_dev->rq_mempool, __GFP_ZERO);
+	if (!rdma)
+		LBUG();
+
+	while ((rq = rq_list_pop(rqlist))) {
+		struct lnet_blk_dev *blkram = rq->mq_hctx->queue->queuedata;
+		loff_t data_len = (blkram->capacity << SECTOR_SHIFT);
+		loff_t pos = blk_rq_pos(rq) << SECTOR_SHIFT;
+		blk_status_t err = BLK_STS_OK;
+		struct req_iterator iter;
+		struct bio_vec bv;
+		int max_iovs;
+		int rc = 0;
+
+		rq_count++;
+
+		blk_mq_start_request(rq);
+
+		if (pos + blk_rq_bytes(rq) > data_len)
+			LBUG();
+
+		memset(rdma, 0, sizeof(*rdma));
+
+		*rdma = (struct lnet_blk_rdma) {
+		  .ln_portal = RDMA_PORTAL,
+		  .ln_self = host_nid_blk,
+		  .ln_pid = (struct lnet_process_id) {
+		    .nid = lnet_nid_to_nid4(&target_nid_blk),
+		    .pid = LNET_PID_LUSTRE,
+		  },
+		  .ln_matchbits = offset_to_matchbits(pos) + 0x1000,
+		  .ln_off = pos % SZ_1M,
+		  .ln_active = true,
+		  .ln_iov_cnt = 0,
+		};
+
+		max_iovs = DIV_ROUND_UP(SZ_1M - rdma->ln_off, PAGE_SIZE);
+		LASSERT(max_iovs <= LNET_MAX_IOV);
+
+		switch (req_op(rq)) {
+		case REQ_OP_READ:
+			rdma->ln_options = LNET_MD_OP_GET;
+			break;
+		case REQ_OP_WRITE:
+			rdma->ln_options = LNET_MD_OP_PUT;
+			break;
+		default:
+			LBUG();
+		}
+
+		rq_for_each_segment(bv, rq, iter) {
+			rdma->ln_iov[rdma->ln_iov_cnt] = bv;
+			rdma->ln_iov_cnt++;
+
+			if (rdma->ln_iov_cnt == max_iovs) {
+				rc = LNetBlkFetch(rdma);
+				if (rc)
+					LBUG();
+
+				pos += SZ_1M;
+
+				rdma->ln_iov_cnt = 0;
+				rdma->ln_matchbits = offset_to_matchbits(pos) + 0x1000;
+				rdma->ln_off = 0;
+				max_iovs = LNET_MAX_IOV;
+			}
+		}
+
+		if (rdma->ln_iov_cnt) {
+			rc = LNetBlkFetch(rdma);
+			if (rc)
+				LBUG();
+		}
+
+		blk_mq_end_request(rq, err);
+	}
+
+	mempool_free(rdma, lnet_blk_dev->rq_mempool);
+	*rqlist = requeue_list;
+}
+
 static const struct block_device_operations lnet_blk_rq_ops = {
 	.owner = THIS_MODULE,
 };
 
 static const struct blk_mq_ops lnet_blk_mq_ops = {
 	.queue_rq = lnet_blk_queue_rq,
+	.queue_rqs = lnet_blk_queue_rqs,
 };
 
 static int __init lnet_blk_host_init(void)
@@ -278,12 +367,15 @@ static int __init lnet_blk_host_init(void)
 	lnet_blk_dev->capacity = size_bytes >> SECTOR_SHIFT;
 
 	lnet_blk_dev->tag_set.flags = BLK_MQ_F_SHOULD_MERGE;
+	lnet_blk_dev->tag_set.flags &= ~BLK_MQ_F_TAG_QUEUE_SHARED;
 	lnet_blk_dev->tag_set.driver_data = lnet_blk_dev;
 	/* TODO: Get NUMA from cpt of NI */
 	lnet_blk_dev->tag_set.numa_node = NUMA_NO_NODE;
 	lnet_blk_dev->tag_set.ops = &lnet_blk_mq_ops;
-	lnet_blk_dev->tag_set.queue_depth = 256;
+	lnet_blk_dev->tag_set.queue_depth = 1024;
 	lnet_blk_dev->tag_set.nr_hw_queues = 1;
+	lnet_blk_dev->tag_set.nr_maps = 1;
+	lnet_blk_dev->tag_set.timeout = 5 * HZ;
 	lnet_blk_dev->tag_set.cmd_size = 0;
 
 	rc = blk_mq_alloc_tag_set(&lnet_blk_dev->tag_set);
