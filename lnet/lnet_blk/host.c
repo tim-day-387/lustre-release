@@ -35,6 +35,7 @@ MODULE_PARM_DESC(target_nid, "Target NID");
 
 static struct lnet_nid host_nid_blk;
 static struct lnet_nid target_nid_blk;
+static struct lnet_ni *host_ni_blk;
 
 struct lnet_blk_dev {
 	sector_t capacity;
@@ -47,6 +48,24 @@ struct lnet_blk_dev {
 static struct lnet_blk_dev *lnet_blk_dev;
 static DEFINE_IDA(blk_ram_indexes);
 static int major;
+
+static struct lnet_ni *LNetGetLocalNID(struct lnet_nid *peer_nid)
+{
+	struct lnet_net *net;
+	struct lnet_ni *ni;
+	int cpt;
+	cpt = lnet_net_lock_current();
+	list_for_each_entry(net, &the_lnet.ln_nets, net_list) {
+		list_for_each_entry(ni, &net->net_ni_list, ni_netlist) {
+			if (nid_same_net(&ni->ni_nid, peer_nid)) {
+				lnet_net_unlock(cpt);
+				return ni;
+			}
+		}
+	}
+	lnet_net_unlock(cpt);
+	return NULL;
+}
 
 static int LNetBlkPostActiveRdma(struct lnet_blk_rdma *rdma)
 {
@@ -85,7 +104,7 @@ static int LNetBlkPostActiveRdma(struct lnet_blk_rdma *rdma)
 		rc = LNetPut(&self, *mdh, LNET_ACK_REQ, &peer,
 			     portal, matchbits, rdma->ln_off, 0);
 	} else if ((options & LNET_MD_OP_GET) != 0) {
-		rc = LNetGet(&self, *mdh, &peer, portal, matchbits, rdma->ln_off, false);
+		rc = LNetGetForce(host_ni_blk, *mdh, &peer, portal, matchbits, rdma->ln_off, &rdma->ln_msg);
 	} else {
 		CERROR("Invalid LNet operation: %d\n", rc);
 		rc = -EINVAL;
@@ -129,8 +148,6 @@ static int offset_to_matchbits(loff_t pos)
 static int LNetBlkFetch(struct lnet_blk_rdma *rdma)
 {
 	int rc = 0;
-
-	init_completion(&rdma->ln_ev_comp);
 
 	rc = LNetBlkPostActiveRdma(rdma);
 	if (rc) {
@@ -183,6 +200,9 @@ static blk_status_t lnet_blk_queue_rq(struct blk_mq_hw_ctx *hctx,
 		.ln_iov_cnt = 0,
 	};
 
+	init_completion(&rdma->ln_ev_comp);
+	rdma->ln_msg.msg_no_owner = true;
+
 	max_iovs = DIV_ROUND_UP(SZ_1M - rdma->ln_off, PAGE_SIZE);
 	LASSERT(max_iovs <= LNET_MAX_IOV);
 
@@ -233,26 +253,79 @@ end_request:
 	return BLK_STS_OK;
 }
 
+static int
+LNetMDBindList(struct lnet_msg_list *ml)
+{
+	struct lnet_msg *msg;
+
+	msg_list_for_each(ml, msg) {
+		struct lnet_blk_rdma *rdma = container_of(msg, struct lnet_blk_rdma, ln_msg);
+		struct lnet_process_id peer4 = rdma->ln_pid;
+		struct lnet_handle_md *mdh = &rdma->ln_mdh;
+		int options = rdma->ln_options;
+		struct lnet_processid peer;
+		struct lnet_md md;
+		int rc;
+
+		lnet_pid4_to_pid(peer4, &peer);
+
+		options |= LNET_MD_MANAGE_REMOTE | LNET_MD_KIOV;
+		md.umd_threshold = 2;
+		md.umd_options = options & ~(LNET_MD_OP_PUT | LNET_MD_OP_GET);
+		md.umd_user_ptr = rdma;
+		md.umd_start = rdma->ln_iov;
+		md.umd_length = rdma->ln_iov_cnt;
+		md.umd_handler = LNetIO_ev_handler;
+
+		rc = LNetMDBind(&md, LNET_UNLINK, mdh);
+		if (rc)
+			LBUG();
+	}
+
+	return 0;
+}
+
+static int
+LNetGetMsgPackList(struct lnet_msg_list *ml)
+{
+	struct lnet_msg *msg;
+
+	msg_list_for_each(ml, msg) {
+		struct lnet_blk_rdma *rdma = container_of(msg, struct lnet_blk_rdma, ln_msg);
+		struct lnet_process_id peer4 = rdma->ln_pid;
+		u64 matchbits = rdma->ln_matchbits;
+		int portal = rdma->ln_portal;
+		struct lnet_processid peer;
+
+		lnet_pid4_to_pid(peer4, &peer);
+
+		LNetGetMsgPack(host_ni_blk, rdma->ln_mdh,
+			       &peer, portal,
+			       matchbits, rdma->ln_off, msg);
+	}
+
+	return 0;
+}
+
 static void lnet_blk_queue_rqs(struct rq_list *rqlist)
 {
 	struct lnet_blk_rdma *rdma = NULL;
 	struct rq_list requeue_list = { };
+	struct lnet_msg *msg, *msg_tmp;
+	struct lnet_msg_list ml = { };
 	struct request *rq;
 	int rq_count = 0;
+	int rc = 0;
 
-	rdma = mempool_alloc(lnet_blk_dev->rq_mempool, __GFP_ZERO);
-	if (!rdma)
-		LBUG();
+	msg_list_init(&ml);
 
 	while ((rq = rq_list_pop(rqlist))) {
 		struct lnet_blk_dev *blkram = rq->mq_hctx->queue->queuedata;
 		loff_t data_len = (blkram->capacity << SECTOR_SHIFT);
 		loff_t pos = blk_rq_pos(rq) << SECTOR_SHIFT;
-		blk_status_t err = BLK_STS_OK;
 		struct req_iterator iter;
 		struct bio_vec bv;
 		int max_iovs;
-		int rc = 0;
 
 		rq_count++;
 
@@ -261,8 +334,11 @@ static void lnet_blk_queue_rqs(struct rq_list *rqlist)
 		if (pos + blk_rq_bytes(rq) > data_len)
 			LBUG();
 
-		memset(rdma, 0, sizeof(*rdma));
+		rdma = mempool_alloc(lnet_blk_dev->rq_mempool, __GFP_ZERO);
+		if (!rdma)
+			LBUG();
 
+		LASSERT(rq);
 		*rdma = (struct lnet_blk_rdma) {
 		  .ln_portal = RDMA_PORTAL,
 		  .ln_self = host_nid_blk,
@@ -274,7 +350,11 @@ static void lnet_blk_queue_rqs(struct rq_list *rqlist)
 		  .ln_off = pos % SZ_1M,
 		  .ln_active = true,
 		  .ln_iov_cnt = 0,
+		  .ln_rq = rq,
 		};
+
+		init_completion(&rdma->ln_ev_comp);
+		rdma->ln_msg.msg_no_owner = true;
 
 		max_iovs = DIV_ROUND_UP(SZ_1M - rdma->ln_off, PAGE_SIZE);
 		LASSERT(max_iovs <= LNET_MAX_IOV);
@@ -293,31 +373,32 @@ static void lnet_blk_queue_rqs(struct rq_list *rqlist)
 		rq_for_each_segment(bv, rq, iter) {
 			rdma->ln_iov[rdma->ln_iov_cnt] = bv;
 			rdma->ln_iov_cnt++;
-
-			if (rdma->ln_iov_cnt == max_iovs) {
-				rc = LNetBlkFetch(rdma);
-				if (rc)
-					LBUG();
-
-				pos += SZ_1M;
-
-				rdma->ln_iov_cnt = 0;
-				rdma->ln_matchbits = offset_to_matchbits(pos) + 0x1000;
-				rdma->ln_off = 0;
-				max_iovs = LNET_MAX_IOV;
-			}
+			LASSERT(rdma->ln_iov_cnt <= max_iovs);
 		}
 
-		if (rdma->ln_iov_cnt) {
-			rc = LNetBlkFetch(rdma);
-			if (rc)
-				LBUG();
-		}
-
-		blk_mq_end_request(rq, err);
+		msg_list_add_tail(&ml, &rdma->ln_msg);
 	}
 
-	mempool_free(rdma, lnet_blk_dev->rq_mempool);
+	rc = LNetMDBindList(&ml);
+	if (rc)
+		LBUG();
+
+	rc = LNetGetMsgPackList(&ml);
+	if (rc)
+		LBUG();
+
+	rc = LNetGetForceList(host_ni_blk, &ml);
+	if (rc)
+		LBUG();
+
+	msg_list_for_each_safe(&ml, msg, msg_tmp) {
+		struct lnet_blk_rdma *rdma_tmp = container_of(msg, struct lnet_blk_rdma, ln_msg);
+
+		wait_for_completion(&rdma_tmp->ln_ev_comp);
+		blk_mq_end_request(rdma_tmp->ln_rq, BLK_STS_OK);
+		mempool_free(rdma_tmp, lnet_blk_dev->rq_mempool);
+	}
+
 	*rqlist = requeue_list;
 }
 
@@ -344,6 +425,7 @@ static int __init lnet_blk_host_init(void)
 	LASSERT(!LNET_NID_IS_ANY(&host_nid_blk));
 	libcfs_strnid(&target_nid_blk, target_nid);
 	LASSERT(!LNET_NID_IS_ANY(&target_nid_blk));
+	host_ni_blk = LNetGetLocalNID(&host_nid_blk);
 
 	rc = register_blkdev(0, "lnetblk");
 	if (rc < 0)

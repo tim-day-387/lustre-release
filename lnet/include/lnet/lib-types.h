@@ -165,6 +165,7 @@ struct lnet_msg {
 	unsigned int          msg_onactivelist:1; /* on the activelist */
 	unsigned int	      msg_rdma_get:1;
 
+	bool	              msg_no_owner;
 	struct lnet_peer_ni  *msg_txpeer;         /* peer I'm sending to */
 	struct lnet_peer_ni  *msg_rxpeer;         /* peer I received from */
 
@@ -182,7 +183,55 @@ struct lnet_msg {
 
 	struct lnet_event	msg_ev;
 	struct lnet_hdr		msg_hdr;
+
+	struct lnet_msg      *msg_next;
 };
+
+struct lnet_msg_list {
+	struct lnet_msg *head;
+	struct lnet_msg *tail;
+};
+
+static inline int msg_list_empty(const struct lnet_msg_list *ml)
+{
+	return ml->head == NULL;
+}
+
+static inline void msg_list_init(struct lnet_msg_list *ml)
+{
+	ml->head = NULL;
+	ml->tail = NULL;
+}
+
+static inline void msg_list_add_tail(struct lnet_msg_list *ml, struct lnet_msg *msg)
+{
+	msg->msg_next = NULL;
+	if (ml->tail)
+		ml->tail->msg_next = msg;
+	else
+		ml->head = msg;
+	ml->tail = msg;
+}
+
+static inline void msg_list_add_head(struct lnet_msg_list *ml, struct lnet_msg *msg)
+{
+	msg->msg_next = ml->head;
+	ml->head = msg;
+	if (!ml->tail)
+		ml->tail = msg;
+}
+
+static inline struct lnet_msg *msg_list_peek(struct lnet_msg_list *ml)
+{
+	return ml->head;
+}
+
+#define msg_list_for_each(ml, pos)					\
+	for (pos = msg_list_peek((ml)); (pos); pos = pos->msg_next)
+
+#define msg_list_for_each_safe(ml, pos, nxt)				\
+	for (pos = msg_list_peek((ml)), nxt = pos->msg_next;		\
+		pos; pos = nxt, nxt = pos ? pos->msg_next : NULL)
 
 struct lnet_libhandle {
 	struct list_head	lh_hash_chain;
@@ -2143,5 +2192,26 @@ static inline int lnet_nl_send_error(struct sk_buff *msg, int portid, int seq,
 	return error;
 #endif
 }
+
+static inline int nid_same_net(const struct lnet_nid *n1,
+			       const struct lnet_nid *n2)
+{
+	return n1->nid_size == n2->nid_size &&
+		n1->nid_type == n2->nid_type &&
+		n1->nid_num == n2->nid_num;
+}
+
+int
+LNetGetMsgPack(struct lnet_ni *ni, struct lnet_handle_md mdh,
+	       struct lnet_processid *target, unsigned int portal,
+	       __u64 match_bits, unsigned int offset, struct lnet_msg *msg);
+
+int
+LNetGetForceList(struct lnet_ni *ni, struct lnet_msg_list *ml);
+
+int
+LNetGetForce(struct lnet_ni *ni, struct lnet_handle_md mdh,
+	     struct lnet_processid *target, unsigned int portal,
+	     __u64 match_bits, unsigned int offset, struct lnet_msg *msg);
 
 #endif

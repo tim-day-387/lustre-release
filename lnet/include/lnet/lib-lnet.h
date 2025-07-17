@@ -460,6 +460,10 @@ static inline void
 lnet_msg_free(struct lnet_msg *msg)
 {
 	LASSERT(!msg->msg_onactivelist);
+
+	if (msg->msg_no_owner)
+		return;
+
 	kmem_cache_free(lnet_msg_cachep, msg);
 }
 

@@ -32,12 +32,14 @@ struct lnet_blk_rdma {
 	struct lnet_nid ln_self;
 	struct lnet_process_id ln_pid;
 	struct lnet_handle_md ln_mdh;
+	struct lnet_msg ln_msg;
 
 	struct completion ln_ev_comp;
 
 	struct bio_vec ln_iov[LNET_MAX_IOV];
 	int ln_iov_cnt;
 	int ln_len;
+	struct request *ln_rq;
 
 	loff_t ln_off;
 

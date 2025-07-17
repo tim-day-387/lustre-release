@@ -10124,18 +10124,19 @@ lnet_ping_event_handler(struct lnet_event *event)
  * Rather than deal with LNet routing trickery, just build the message
  * ourselves and send it over a network interface of our choosing.
  */
-static int
+int
 LNetGetForce(struct lnet_ni *ni, struct lnet_handle_md mdh,
 	     struct lnet_processid *target, unsigned int portal,
-	     __u64 match_bits, unsigned int offset)
+	     __u64 match_bits, unsigned int offset, struct lnet_msg *msg)
 {
 	struct lnet_libmd *md;
-	struct lnet_msg *msg;
 	int cpt, rc;
 
 	LASSERT(the_lnet.ln_refcount > 0);
 
-	msg = lnet_msg_alloc();
+	if (!msg)
+		msg = lnet_msg_alloc();
+
 	if (!msg) {
 		CERROR("Dropping GET to %s: ENOMEM on struct lnet_msg\n",
 		       libcfs_idstr(target));
@@ -10189,6 +10190,80 @@ LNetGetForce(struct lnet_ni *ni, struct lnet_handle_md mdh,
 
 	return 0;
 }
+EXPORT_SYMBOL(LNetGetForce);
+
+int
+LNetGetMsgPack(struct lnet_ni *ni, struct lnet_handle_md mdh,
+	       struct lnet_processid *target, unsigned int portal,
+	       __u64 match_bits, unsigned int offset, struct lnet_msg *msg)
+{
+	struct lnet_libmd *md;
+	int cpt;
+
+	LASSERT(the_lnet.ln_refcount > 0);
+	LASSERT(msg);
+
+	cpt = lnet_cpt_of_cookie(mdh.cookie);
+	lnet_res_lock(cpt);
+
+	md = lnet_handle2md(&mdh);
+	if (!md || md->md_threshold == 0 || md->md_me) {
+		CERROR("Dropping GET (%llu:%d:%s): MD (%d) invalid\n",
+		       match_bits, portal, libcfs_idstr(target),
+		       !md ? -1 : md->md_threshold);
+
+		if (md && md->md_me)
+			CERROR("REPLY MD also attached to portal %d\n",
+			       md->md_me->me_portal);
+
+		lnet_res_unlock(cpt);
+		lnet_msg_free(msg);
+		return -ENOENT;
+	}
+
+	lnet_msg_attach_md(msg, md, 0, 0);
+
+	lnet_prep_send(msg, LNET_MSG_GET, target, 0, 0);
+
+	msg->msg_hdr.msg.get.match_bits = cpu_to_le64(match_bits);
+	msg->msg_hdr.msg.get.ptl_index = cpu_to_le32(portal);
+	msg->msg_hdr.msg.get.src_offset = cpu_to_le32(offset);
+	msg->msg_hdr.msg.get.sink_length = cpu_to_le32(md->md_length);
+
+	/* NB handles only looked up by creator (no flips) */
+	msg->msg_hdr.msg.get.return_wmd.wh_interface_cookie =
+		the_lnet.ln_interface_cookie;
+	msg->msg_hdr.msg.get.return_wmd.wh_object_cookie =
+		md->md_lh.lh_cookie;
+
+	msg->msg_hdr.src_nid = ni->ni_nid;
+	msg->msg_hdr.src_pid = the_lnet.ln_pid;
+
+	lnet_res_unlock(cpt);
+
+	return 0;
+}
+EXPORT_SYMBOL(LNetGetMsgPack);
+
+int
+LNetGetForceList(struct lnet_ni *ni, struct lnet_msg_list *ml)
+{
+	struct lnet_msg *msg;
+	int rc;
+
+	msg_list_for_each(ml, msg) {
+		lnet_build_msg_event(msg, LNET_EVENT_SEND);
+
+		rc = (ni->ni_net->net_lnd->lnd_send)(ni, msg->msg_private, msg);
+		if (rc < 0) {
+			msg->msg_no_resend = true;
+			lnet_finalize(msg, rc);
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(LNetGetForceList);
 
 static void lnet_dump_nid_metadata(struct lnet_nid_metadata *data)
 {
@@ -10283,7 +10358,7 @@ int lnet_discover_nid_metadata(struct lnet_processid *id,
 	}
 
 	rc = LNetGetForce(ni, pd.mdh, id, LNET_RESERVED_PORTAL,
-			  LNET_PROTO_PING_MATCHBITS, 0);
+			  LNET_PROTO_PING_MATCHBITS, 0, NULL);
 
 	if (rc != 0) {
 		/* Don't CERROR; this could be deliberate! */
