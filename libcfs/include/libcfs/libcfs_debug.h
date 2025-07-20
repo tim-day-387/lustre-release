@@ -163,7 +163,7 @@ static inline int cfs_cdebug_show(unsigned int mask, unsigned int subsystem)
 #  define CDEBUG_LIMIT(mask, format, ...) (void)(0)
 #  define CDEBUG_LIMIT_LOC(file, func, line, mask, format, ...) (void)(0)
 #  define CDEBUG_SLOW(delay, mask, format, ...) (void)(0)
-#  warning "CDEBUG IS DISABLED. THIS SHOULD NEVER BE DONE FOR PRODUCTION!"
+#  define __CDEBUG_WITH_LOC(file, func, line, mask, cdls, format, ...) (void)(0)
 # endif /* CDEBUG_ENABLED */
 
 /*

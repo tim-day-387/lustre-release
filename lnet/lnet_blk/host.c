@@ -329,8 +329,6 @@ static void lnet_blk_queue_rqs(struct rq_list *rqlist)
 
 		rq_count++;
 
-		blk_mq_start_request(rq);
-
 		if (pos + blk_rq_bytes(rq) > data_len)
 			LBUG();
 
@@ -373,9 +371,15 @@ static void lnet_blk_queue_rqs(struct rq_list *rqlist)
 		rq_for_each_segment(bv, rq, iter) {
 			rdma->ln_iov[rdma->ln_iov_cnt] = bv;
 			rdma->ln_iov_cnt++;
-			LASSERT(rdma->ln_iov_cnt <= max_iovs);
 		}
 
+		if (rdma->ln_iov_cnt > max_iovs) {
+			mempool_free(rdma, lnet_blk_dev->rq_mempool);
+			rq_list_add_tail(&requeue_list, rq);
+			continue;
+		}
+
+		blk_mq_start_request(rq);
 		msg_list_add_tail(&ml, &rdma->ln_msg);
 	}
 

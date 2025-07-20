@@ -3000,12 +3000,6 @@ lnet_select_pathway(struct lnet_nid *src_nid,
 	 */
 	cpt = lnet_net_lock_current();
 
-	md_cpt = lnet_cpt_of_md(msg->msg_md, msg->msg_offset);
-	if (md_cpt == CFS_CPT_ANY)
-		md_cpt = cpt;
-
-again:
-
 	/*
 	 * If we're being asked to send to the loopback interface, there
 	 * is no need to go through any selection. We can just shortcut
@@ -3018,6 +3012,12 @@ again:
 		lnet_net_unlock(cpt);
 		return rc;
 	}
+
+	md_cpt = lnet_cpt_of_md(msg->msg_md, msg->msg_offset);
+	if (md_cpt == CFS_CPT_ANY)
+		md_cpt = cpt;
+
+again:
 
 	/*
 	 * find an existing peer_ni, or create one and mark it as having been
