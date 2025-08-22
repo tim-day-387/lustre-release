@@ -16,7 +16,7 @@
 
 static void *(*__cfs_kallsyms_lookup_name)(const char *name);
 
-void *cfs_kallsyms_lookup_name(const char *name)
+static void *cfs_kallsyms_lookup_name(const char *name)
 {
 	return __cfs_kallsyms_lookup_name(name);
 }
