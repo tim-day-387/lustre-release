@@ -28,6 +28,7 @@ with_zfs="no"
 # Disable optional features
 with_o2ib="no"
 enable_gss="no"
+enable_crypto="no"
 
 # Always build the server
 enable_server="yes"
