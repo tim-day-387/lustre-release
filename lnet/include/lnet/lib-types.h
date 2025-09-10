@@ -117,6 +117,9 @@ struct lnet_msg {
 	struct lnet_nid		msg_from;
 	__u32			msg_type;
 
+	/* Refcount for eBPF */
+	struct kref		msg_refcount;
+
 	/*
 	 * hold parameters in case message is with held due
 	 * to discovery
@@ -175,6 +178,10 @@ struct lnet_msg {
 	/* the NI the message was sent or received over */
 	struct lnet_ni       *msg_txni;
 	struct lnet_ni       *msg_rxni;
+
+	void                 *msg_dest;
+	int                   msg_dest__sz;
+	unsigned int          msg_doffset;
 
 	unsigned int          msg_len;
 	unsigned int          msg_wanted;

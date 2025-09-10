@@ -411,22 +411,30 @@ lnet_ni_decref(struct lnet_ni *ni)
 	lnet_net_unlock(0);
 }
 
-static inline struct lnet_msg *
-lnet_msg_alloc(void)
+void lnet_msg_release(struct kref *ref);
+
+static inline struct lnet_msg *lnet_msg_alloc(void)
 {
 	struct lnet_msg *msg;
 
 	msg = kmem_cache_zalloc(lnet_msg_cachep, GFP_NOFS);
 
-	return (msg);
+	kref_init(&msg->msg_refcount);
+
+	return msg;
 }
 
-static inline void
-lnet_msg_free(struct lnet_msg *msg)
+static inline void lnet_msg_get(struct lnet_msg *msg)
 {
-	LASSERT(!msg->msg_onactivelist);
-	kmem_cache_free(lnet_msg_cachep, msg);
+	kref_get(&msg->msg_refcount);
 }
+
+static inline void lnet_msg_put(struct lnet_msg *msg)
+{
+	kref_put(&msg->msg_refcount, lnet_msg_release);
+}
+
+#define lnet_msg_free lnet_msg_put
 
 static inline struct lnet_rsp_tracker *
 lnet_rspt_alloc(int cpt)

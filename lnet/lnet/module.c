@@ -444,11 +444,148 @@ static struct miscdevice lnet_dev = {
 	.fops			= &lnet_fops,
 };
 
+void lnet_msg_release(struct kref *ref)
+{
+	struct lnet_msg *msg = container_of(ref, struct lnet_msg, msg_refcount);
+
+	LASSERT(!msg->msg_onactivelist);
+	kmem_cache_free(lnet_msg_cachep, msg);
+}
+
+__bpf_kfunc_start_defs();
+
+__bpf_kfunc struct lnet_msg *bpf_lnet_get_msg(struct lnet_msg *msg__ign)
+{
+	if (!msg__ign)
+		return NULL;
+
+	lnet_msg_get(msg__ign);
+
+	return msg__ign;
+}
+
+__bpf_kfunc void bpf_lnet_put_msg(struct lnet_msg *msg)
+{
+	if (!msg)
+		return;
+
+	lnet_msg_put(msg);
+}
+
+__bpf_kfunc void bpf_lnet_load_bytes(void *dest, int dest__sz,
+				     unsigned int doffset,
+				     struct lnet_msg *msg)
+{
+	struct kvec diov = {
+		.iov_base = dest,
+		.iov_len = dest__sz,
+	};
+	struct iov_iter to;
+	int size;
+
+	if (!msg)
+		return;
+
+	size = msg->msg_len > dest__sz ? dest__sz : msg->msg_len;
+
+	if (!dest || !dest__sz)
+		return;
+
+	if (!msg->msg_niov || !msg->msg_kiov || !msg->msg_len)
+		return;
+
+	iov_iter_kvec(&to, READ, &diov, 1, dest__sz);
+	iov_iter_advance(&to, doffset);
+	lnet_copy_kiov2iter(&to, msg->msg_niov, msg->msg_kiov,
+			    msg->msg_offset, size);
+}
+
+__bpf_kfunc void bpf_lnet_lazy_load_bytes(void *dest, int dest__sz,
+					  unsigned int doffset,
+					  struct lnet_msg *msg)
+{
+	if (!msg)
+		return;
+
+	msg->msg_dest = dest;
+	msg->msg_dest__sz = dest__sz;
+	msg->msg_doffset = doffset;
+}
+
+__bpf_kfunc void bpf_lnet_ev_load_bytes(void *dest, int dest__sz,
+					unsigned int doffset,
+					struct lnet_event *ev__ign)
+{
+	struct kvec diov = {
+		.iov_base = dest,
+		.iov_len = dest__sz,
+	};
+	struct lnet_libmd *md;
+	struct iov_iter to;
+	int size;
+
+	if (!ev__ign)
+		return;
+
+	md = lnet_handle2md(&ev__ign->md_handle);
+	if (!md)
+		return;
+
+	if (!dest || !dest__sz)
+		return;
+
+	if (!md->md_niov || !md->md_kiov || !md->md_length)
+		return;
+
+	size = ev__ign->rlength > dest__sz ? dest__sz : ev__ign->rlength;
+
+	iov_iter_kvec(&to, READ, &diov, 1, dest__sz);
+	iov_iter_advance(&to, doffset);
+	lnet_copy_kiov2iter(&to, md->md_niov, md->md_kiov,
+			    ev__ign->offset, size);
+}
+
+__bpf_kfunc_end_defs();
+
+BTF_KFUNCS_START(bpf_lnet_kfunc_ids);
+BTF_ID_FLAGS(func, bpf_lnet_get_msg, KF_ACQUIRE | KF_RET_NULL);
+BTF_ID_FLAGS(func, bpf_lnet_put_msg, KF_RELEASE);
+BTF_ID_FLAGS(func, bpf_lnet_load_bytes, KF_TRUSTED_ARGS);
+BTF_ID_FLAGS(func, bpf_lnet_lazy_load_bytes, KF_TRUSTED_ARGS);
+BTF_ID_FLAGS(func, bpf_lnet_ev_load_bytes, 0);
+BTF_KFUNCS_END(bpf_lnet_kfunc_ids);
+
+static const struct btf_kfunc_id_set bpf_lnet_kfunc_set = {
+	.owner = THIS_MODULE,
+	.set   = &bpf_lnet_kfunc_ids,
+};
+
+BTF_ID_LIST(bpf_lnet_dtor_ids);
+BTF_ID(struct, lnet_msg);
+BTF_ID(func, bpf_lnet_put_msg);
+
 static int __init lnet_init(void)
 {
 	int rc;
+	const struct btf_id_dtor_kfunc bpf_lnet_dtors[] = {
+		{
+			.btf_id		= bpf_lnet_dtor_ids[0],
+			.kfunc_btf_id	= bpf_lnet_dtor_ids[1]
+		},
+	};
 
 	ENTRY;
+
+	rc = register_btf_kfunc_id_set(BPF_PROG_TYPE_UNSPEC, &bpf_lnet_kfunc_set);
+	if (rc)
+		return rc;
+
+	rc = register_btf_id_dtor_kfuncs(bpf_lnet_dtors,
+					 ARRAY_SIZE(bpf_lnet_dtors),
+					 THIS_MODULE);
+	if (rc)
+		return rc;
+
 	rc = libcfs_setup();
 	if (rc)
 		return rc;

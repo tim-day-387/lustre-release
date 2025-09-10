@@ -956,6 +956,24 @@ lnet_health_check(struct lnet_msg *msg)
 	return -1;
 }
 
+static void lnet_load_bytes(struct lnet_msg *msg)
+{
+	struct kvec diov = { .iov_base = msg->msg_dest, .iov_len = msg->msg_dest__sz };
+	int size = msg->msg_len > msg->msg_dest__sz ? msg->msg_dest__sz : msg->msg_len;
+	struct iov_iter to;
+
+	if (!msg->msg_dest || !msg->msg_dest__sz)
+		return;
+
+	if (!msg->msg_niov || !msg->msg_kiov || !msg->msg_len)
+		return;
+
+	iov_iter_kvec(&to, READ, &diov, 1, msg->msg_dest__sz);
+	iov_iter_advance(&to, msg->msg_doffset);
+	lnet_copy_kiov2iter(&to, msg->msg_niov, msg->msg_kiov,
+			    msg->msg_offset, size);
+}
+
 static void
 lnet_msg_detach_md(struct lnet_msg *msg, int status)
 {
@@ -992,6 +1010,8 @@ lnet_msg_detach_md(struct lnet_msg *msg, int status)
 	if (unlink || (md->md_refcount == 0 &&
 		       md->md_threshold == LNET_MD_THRESH_INF))
 		lnet_detach_rsp_tracker(md, cpt);
+
+	lnet_load_bytes(msg);
 
 	msg->msg_md = NULL;
 	if (unlink)
