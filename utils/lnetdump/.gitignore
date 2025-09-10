@@ -1,0 +1,7 @@
+bpftool-merge
+lnetdump
+lnettypes.h
+lnetdump.skel.h
+merged.btf
+*.ko.tmp
+*.o.tmp

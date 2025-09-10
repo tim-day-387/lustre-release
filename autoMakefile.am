@@ -131,6 +131,9 @@ help:
 checkpatch:
 	@git diff HEAD~1 | ./contrib/scripts/checkpatch.pl
 
+lnetdump:
+	$(MAKE) -C utils/lnetdump
+
 utils:
 	$(MAKE) -C libcfs/libcfs/util
 	$(MAKE) -C lnet/utils

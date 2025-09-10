@@ -1,0 +1,40 @@
+TODO
+
+New Input/Output
+- file_input.c
+- file_output.c
+- histo_output.c
+- graph_output.c
+
+Daemon
+- We should have some systemd daemon that constantly
+  listens for traffic a emits it to a ring buffer/file
+  somehow
+- Integrate this with ktest somehow
+
+USDP
+- Direct traffic to a particular LNet interface
+  based on what type of packet it is
+- Track what interface a packet is sent to
+- Track what interface a packet is recv on; does
+  this correlate by XID?
+
+Fault Injection
+- Network fault injection; both corrupting
+  packets and changing fields while recomputing
+  the checksum
+
+Misc
+- We should be able to filter based on portal, opc,
+  source/destination (both NID and service type). The
+  BPF should only emit the needed events. We could
+  either add arguments to the predefined BPF or allow
+  the user to provide custom BPF.
+- Improve documentation in files
+- Update CLI options to be cleaner
+- Grab LNet recv from MD events?
+- Daemonize network monitoring
+- Man page
+- Proper packaging
+- Proper build integration
+- BPF helpers should be more resistant to misuse
