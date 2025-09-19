@@ -12,6 +12,6 @@ endif # LINUX
 
 endif # MODULES
 
-EXTRA_DIST := $(lnet-objs:%.o=%.c) lib-cpt.c adler.h
+EXTRA_DIST := $(lnet-objs:%.o=%.c) lib-cpt.c adler.h tracefile.h
 
 MOSTLYCLEANFILES = @MOSTLYCLEANFILES@ lnet

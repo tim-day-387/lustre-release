@@ -340,10 +340,12 @@ test_5j() {
 	unload_modules
 	load_module ../libcfs/libcfs/libcfs ||
 		error "Failed to load modules libcfs rc = $?"
+	load_module ../lnet/lnet/lnet ||
+		error "Failed to load modules LNet rc = $?"
 	$LCTL set_param debug=all
-	rmmod -v libcfs
+	rmmod -v lnet
 }
-run_test 5j "verify libcfs doesn't crash when setting debug flags"
+run_test 5j "verify LNet doesn't crash when setting debug flags"
 
 test_6() {
 	setup
@@ -4011,8 +4013,8 @@ test_41c() {
 	# MDT concurrent start
 
 	LOAD_MODULES_REMOTE=true load_modules
-	do_facet $SINGLEMDS "lsmod | grep -q libcfs" ||
-		error "MDT concurrent start: libcfs module not loaded"
+	do_facet $SINGLEMDS "lsmod | grep -q lnet" ||
+		error "MDT concurrent start: LNet module not loaded"
 
 	local mds1dev=$(mdsdevname 1)
 	local mds1mnt=$(facet_mntpt mds1)
@@ -4057,8 +4059,8 @@ test_41c() {
 
 	# OST concurrent start
 
-	do_rpc_nodes $osts "lsmod | grep -q libcfs" ||
-		error "OST concurrent start: libcfs module not loaded"
+	do_rpc_nodes $osts "lsmod | grep -q lnet" ||
+		error "OST concurrent start: LNet module not loaded"
 
 	local ost1dev=$(ostdevname 1)
 	local ost1mnt=$(facet_mntpt ost1)
@@ -8973,10 +8975,10 @@ test_102() {
 		import_zpool mds1 || return ${PIPESTATUS[0]}
 	fi
 
-	# unload all and only load libcfs to allow fail_loc setting
+	# unload all and only load LNet to allow fail_loc setting
 	do_facet mds1 $LUSTRE_RMMOD || error "unable to unload modules"
-	do_rpc_nodes $(facet_active_host mds1) load_module ../libcfs/libcfs/libcfs
-	do_facet mds1 lsmod | grep libcfs || error "libcfs not loaded"
+	do_rpc_nodes $(facet_active_host mds1) load_module ../lnet/lnet/lnet
+	do_facet mds1 lsmod | grep lnet || error "LNet not loaded"
 
 	#define OBD_FAIL_OBDCLASS_MODULE_LOAD    0x60a
 	do_facet mds1 "$LCTL set_param fail_loc=0x8000060a"
@@ -11135,7 +11137,7 @@ test_126() {
 		skip "Need MDS version at least 2.13.52"
 
 	cleanup
-	do_rpc_nodes $(facet_active_host $SINGLEMDS) load_module ../libcfs/libcfs/libcfs
+	do_rpc_nodes $(facet_active_host $SINGLEMDS) load_module ../lnet/lnet/lnet
 	#define OBD_FAIL_OBD_SETUP 0x60d
 	do_facet mds1 $LCTL set_param fail_loc=0x60d
 	do_rpc_nodes $(facet_active_host $SINGLEMDS) load_modules &
@@ -11569,9 +11571,9 @@ test_135() {
 	do_nodes $(all_nodes) "$LCTL set_param fail_loc=0x1312 fail_val=5"
 
 	# disable console ratelimit
-	local rl=$(cat /sys/module/libcfs/parameters/libcfs_console_ratelimit)
-	echo 0 > /sys/module/libcfs/parameters/libcfs_console_ratelimit
-	stack_trap "echo $rl > /sys/module/libcfs/parameters/libcfs_console_ratelimit"
+	local rl=$($LCTL get_param -n console_ratelimit)
+	$LCTL set_param console_ratelimit=0
+	stack_trap "$LCTL set_param console_ratelimit $rl"
 
 	test_mkdir -c 1 -i 0 $DIR/$tdir || error "Failed to create directory"
 	do_nodes $(osts_nodes) $LCTL set_param \
@@ -12372,22 +12374,22 @@ cleanup_200() {
 	local modopts=$1
 	stopall
 	$LUSTRE_RMMOD
-	[[ -z $modopts ]] || MODOPTS_LIBCFS=$modopts
+	[[ -z $modopts ]] || MODOPTS_LNET=$modopts
 }
 
 test_200a() {
 	cleanup_200
 
 	local cpus=$(lscpu | awk '/^CPU.s.:/ {print $NF}')
-	local old_modopts=$MODOPTS_LIBCFS
+	local old_modopts=$MODOPTS_LNET
 	stack_trap "cleanup_200 $old_modopts"
 
-	MODOPTS_LIBCFS="cpu_npartitions=$cpus"
+	MODOPTS_LNET="cpu_npartitions=$cpus"
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	$LCTL get_param -n cpu_partition_table
 
-	local expected=$(cat /sys/module/libcfs/parameters/cpu_npartitions)
+	local expected=$($LCTL get_param -n cpu_npartitions)
 	local result=$($LCTL get_param -n cpu_partition_table | wc -l)
 
 	(( $result == $expected )) ||
@@ -12400,14 +12402,14 @@ test_200b() {
 
 	local cpus=$(lscpu | awk '/^CPU.s.:/ {print $NF}')
 	local nodes=$(lscpu | awk '/NUMA node.s.:/ {print $NF}')
-	local old_modopts=$MODOPTS_LIBCFS
+	local old_modopts=$MODOPTS_LNET
 	stack_trap "cleanup_200 $old_modopts"
 
 	local pattern="0[$(lscpu | awk '/CPU.s. list:/ {print $NF}')]"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
-	grep . /sys/module/libcfs/parameters/cpu*
+	load_modules_local lnet
+	$LCTL get_param cpu*
 	$LCTL get_param -n cpu_partition_table
 	local expected=cpus
 	local table=$($LCTL get_param -n cpu_partition_table)
@@ -12428,9 +12430,9 @@ test_200b() {
 	cleanup
 
 	pattern="0[1-2]"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	$LCTL get_param -n cpu_partition_table
 	expected="0	: 1 2"
 	table=$($LCTL get_param -n cpu_partition_table)
@@ -12446,14 +12448,14 @@ test_200c() {
 	local cpus=$(lscpu | awk '/^CPU.s.:/ {print $NF}')
 	local nodes=$(lscpu | awk '/NUMA node.s.:/ {print $NF}')
 
-	local old_modopts=$MODOPTS_LIBCFS
+	local old_modopts=$MODOPTS_LNET
 	stack_trap "cleanup_200 $old_modopts"
 
 	local pattern="N"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
-	grep . /sys/module/libcfs/parameters/cpu*
+	load_modules_local lnet
+	$LCTL get_param cpu*
 	$LCTL get_param -n cpu_partition_table
 	local expected=$nodes
 	local table=$($LCTL get_param -n cpu_partition_table)
@@ -12465,17 +12467,17 @@ test_200c() {
 	cleanup
 
 	pattern="0[$(lscpu | awk '/^NUMA node0 CPU.s.:/ {print $NF}')]"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	expected=$($LCTL get_param -n cpu_partition_table)
 
 	cleanup
 
 	pattern="N 0[0]"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	$LCTL get_param -n cpu_partition_table
 	local table=$($LCTL get_param -n cpu_partition_table)
 
@@ -12505,16 +12507,16 @@ test_200d() {
 	local nodes=$(lscpu | awk '/NUMA node.s.:/ {print $NF}')
 	local parts=$((cpus / 2))
 
-	local old_modopts=$MODOPTS_LIBCFS
+	local old_modopts=$MODOPTS_LNET
 	stack_trap "cleanup_200 $old_modopts"
 
 	local full_cpu_count=0
 	local excluded_count=0
 
 	# First, get the full table
-	MODOPTS_LIBCFS="cpu_npartitions=$parts"
+	MODOPTS_LNET="cpu_npartitions=$parts"
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	echo "full_table:"
 	$LCTL get_param -n cpu_partition_table
 
@@ -12528,11 +12530,11 @@ test_200d() {
 
 	# Now, set the pattern to exclude CPU 1
 	pattern="X[1]"
-	MODOPTS_LIBCFS="cpu_npartitions=$parts cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_npartitions=$parts cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	echo "table with CPU 1 excluded:"
-	grep . /sys/module/libcfs/parameters/cpu*
+	grep . /sys/module/lnet/parameters/cpu*
 	$LCTL get_param -n cpu_partition_table
 
 	local table=()
@@ -12570,9 +12572,9 @@ test_200d() {
 
 	# First, get the full table
 	pattern="N"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	echo "full_table:"
 	$LCTL get_param -n cpu_partition_table
 
@@ -12586,11 +12588,11 @@ test_200d() {
 
 	# Now, set the pattern to exclude CPU 1
 	pattern="N X[1]"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	echo "table with CPU 1 excluded:"
-	grep . /sys/module/libcfs/parameters/cpu*
+	$LCTL get_param cpu*
 	$LCTL get_param -n cpu_partition_table
 
 	table=()
@@ -12637,14 +12639,14 @@ test_200e() {
 	local excluded
 	local partition
 
-	local old_modopts=$MODOPTS_LIBCFS
+	local old_modopts=$MODOPTS_LNET
 	stack_trap "cleanup_200 $old_modopts"
 
 	# N C[0]
 	pattern="N"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	echo "full_table:"
 	$LCTL get_param -n cpu_partition_table
 
@@ -12659,10 +12661,10 @@ test_200e() {
 	cleanup
 
 	pattern="N C[0]"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\""
+	MODOPTS_LNET="cpu_pattern=\"$pattern\""
 
-	load_modules_local libcfs
-	grep . /sys/module/libcfs/parameters/cpu*
+	load_modules_local lnet
+	$LCTL get_param cpu*
 	echo "table with npartitions=$npartitions:"
 	$LCTL get_param -n cpu_partition_table
 
@@ -12690,9 +12692,9 @@ test_200e() {
 	cleanup
 
 	# C[0] with npartitions
-	MODOPTS_LIBCFS="cpu_npartitions=$npartitions"
+	MODOPTS_LNET="cpu_npartitions=$npartitions"
 
-	load_modules_local libcfs
+	load_modules_local lnet
 	echo "full_table:"
 	$LCTL get_param -n cpu_partition_table
 
@@ -12707,10 +12709,10 @@ test_200e() {
 	cleanup
 
 	pattern="C[0]"
-	MODOPTS_LIBCFS="cpu_pattern=\"$pattern\" cpu_npartitions=$npartitions"
+	MODOPTS_LNET="cpu_pattern=\"$pattern\" cpu_npartitions=$npartitions"
 
-	load_modules_local libcfs
-	grep . /sys/module/libcfs/parameters/cpu*
+	load_modules_local lnet
+	$LCTL get_param cpu*
 	echo "table with npartitions=$npartitions:"
 	$LCTL get_param -n cpu_partition_table
 

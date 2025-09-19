@@ -218,12 +218,6 @@ do {									\
 
 /******************************************************************************/
 
-void libcfs_debug_dumplog(void);
-int libcfs_debug_init(unsigned long bufsize);
-int libcfs_debug_cleanup(void);
-int libcfs_debug_clear_buffer(void);
-int libcfs_debug_mark_buffer(const char *text);
-
 #define CFS_ALLOC_PTR(ptr)      LIBCFS_ALLOC(ptr, sizeof(*(ptr)));
 #define CFS_ALLOC_PTR_ARRAY(ptr, count)			\
 	LIBCFS_ALLOC(ptr, (count) * sizeof(*(ptr)))

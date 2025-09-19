@@ -15,7 +15,6 @@
  */
 
 #define DEBUG_SUBSYSTEM S_LNET
-#include "tracefile.h"
 
 #include <linux/ctype.h>
 #include <linux/fs.h>
@@ -24,6 +23,8 @@
 #include <linux/poll.h>
 #include <linux/uaccess.h>
 #include <linux/libcfs/libcfs.h>
+
+#include "tracefile.h"
 
 enum cfs_trace_buf_type {
 	CFS_TCD_TYPE_PROC = 0,

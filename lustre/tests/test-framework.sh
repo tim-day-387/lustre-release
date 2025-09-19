@@ -1054,33 +1054,39 @@ load_lnet() {
 		fi
 	fi
 
-	# if there is only one CPU core, libcfs can only create one partition
-	# if there is more than 4 CPU cores, libcfs should create multiple CPU
-	# partitions. So we just force libcfs to create 2 partitions for
-	# system with 2 or 4 cores
-	local saved_opts="$MODOPTS_LIBCFS"
+	load_module ../libcfs/libcfs/libcfs
 
-	echo "MODOPTS_LIBCFS=$MODOPTS_LIBCFS"
-	if ! [[ "$MODOPTS_LIBCFS" =~ "cpu_" ]] &&
+	# if there is only one CPU core, LNet can only create one partition
+	# if there is more than 4 CPU cores, LNet should create multiple CPU
+	# partitions. So we just force LNet to create 2 partitions for
+	# system with 2 or 4 cores
+	local saved_opts="$MODOPTS_LNET"
+
+	echo "MODOPTS_LNET=$MODOPTS_LNET"
+	if ! [[ "$MODOPTS_LNET" =~ "cpu_" ]] &&
 	   (( $ncpus <= 4 && $ncpus > 1 )); then
 		# force to enable multiple CPU partitions
-		echo "Force libcfs to create 2 CPU partitions"
-		MODOPTS_LIBCFS="cpu_npartitions=2 $MODOPTS_LIBCFS"
+		echo "Force LNet to create 2 CPU partitions"
+		MODOPTS_LNET="cpu_npartitions=2 $MODOPTS_LNET"
 	else
-		echo "libcfs will create CPU partition based on online CPUs"
+		echo "LNet will create CPU partition based on online CPUs"
 	fi
 
-	load_module ../libcfs/libcfs/libcfs
-	# Prevent local MODOPTS_LIBCFS being passed as part of environment
-	# variable to remote nodes
-	unset MODOPTS_LIBCFS
+	if [ -f /sys/module/libcfs/parameters/debug ]; then
+		set_default_debug "neterror net nettrace malloc"
+	else
+		MODOPTS_LNET="debug=\"neterror net nettrace malloc\" $MODOPTS_LNET"
+	fi
 
-	set_default_debug "neterror net nettrace malloc"
 	if [[ $1 == config_on_load=1 ]]; then
 		load_module ../lnet/lnet/lnet
 	else
 		load_module ../lnet/lnet/lnet "$@"
 	fi
+
+	# Prevent local MODOPTS_LNET being passed as part of environment
+	# variable to remote nodes
+	unset MODOPTS_LNET
 
 	LNDPATH=${LNDPATH:-"../lnet/klnds"}
 	if [ -z "$LNETLND" ]; then

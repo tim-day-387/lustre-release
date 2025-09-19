@@ -5226,7 +5226,7 @@ test_200() {
 	local saved_debug
 
 	saved_debug=$(do_node "$rcli" \
-		      "cat /sys/module/libcfs/parameters/libcfs_debug" \
+		      "cat /sys/module/lnet/parameters/libcfs_debug" \
 		      2>/dev/null)
 	[[ -z $saved_debug ]] && error "Failed to get existing debug"
 	stack_trap "do_node $rcli $LCTL set_param debug=$saved_debug"
