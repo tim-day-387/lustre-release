@@ -502,26 +502,6 @@ static inline int llog_prev_block(const struct lu_env *env,
 	RETURN(rc);
 }
 
-static inline int llog_connect(struct llog_ctxt *ctxt,
-			       struct llog_logid *logid, struct llog_gen *gen,
-			       struct obd_uuid *uuid)
-{
-	const struct llog_operations *lop;
-	int rc;
-
-	ENTRY;
-
-	rc = llog_obd2ops(ctxt, &lop);
-	if (rc)
-		RETURN(rc);
-	if (lop->lop_connect == NULL)
-		RETURN(-EOPNOTSUPP);
-
-	rc = lop->lop_connect(ctxt, logid, gen, uuid);
-	RETURN(rc);
-}
-
-
 static inline int llog_max_idx(struct llog_log_hdr *lh)
 {
 	if (CFS_FAIL_PRECHECK(OBD_FAIL_CAT_RECORDS) &&
