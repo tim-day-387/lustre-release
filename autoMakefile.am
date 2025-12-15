@@ -15,7 +15,6 @@ SUBDIRS := @LDISKFS_SUBDIR@ \
 	@LUSTREIOKIT_SUBDIR@ \
 	Documentation \
 	lib \
-	libcfs \
 	lnet \
 	lustre
 
@@ -23,7 +22,6 @@ DIST_SUBDIRS := ldiskfs \
 	lustre-iokit \
 	Documentation \
 	lib \
-	libcfs \
 	lnet \
 	lustre \
 	config
@@ -186,6 +184,10 @@ dist-hook: undef.h
 			-name .svn -o \
 			-name .git -o \
 			-name .#* -exec rm -rf {} \;
+
+modulenet_DATA = lustre_compat/libcfs.ko
+
+lustre_compat/libcfs.ko: modules
 
 EXTRA_DIST = @PACKAGE_TARNAME@.spec	\
 	config/Kbuild 			\

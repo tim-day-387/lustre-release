@@ -5691,7 +5691,7 @@ static_config() {
 
 	cleanup_lnet || error "Failed to cleanup LNet"
 
-	load_module ../libcfs/libcfs/libcfs ||
+	load_module ../lustre_compat/libcfs ||
 		error "Failed to load module libcfs rc = $?"
 
 	load_module ../lnet/lnet/lnet ||

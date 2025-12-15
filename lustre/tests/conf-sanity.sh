@@ -338,7 +338,7 @@ run_test 5i "start mdt failure at mdt_quota_init()"
 
 test_5j() {
 	unload_modules
-	load_module ../libcfs/libcfs/libcfs ||
+	load_module ../lustre_compat/libcfs ||
 		error "Failed to load modules libcfs rc = $?"
 	load_module ../lnet/lnet/lnet ||
 		error "Failed to load modules LNet rc = $?"

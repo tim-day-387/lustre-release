@@ -1054,7 +1054,7 @@ load_lnet() {
 		fi
 	fi
 
-	load_module ../libcfs/libcfs/libcfs
+	load_module ../lustre_compat/libcfs
 
 	# if there is only one CPU core, LNet can only create one partition
 	# if there is more than 4 CPU cores, LNet should create multiple CPU
@@ -7585,7 +7585,7 @@ run_test() {
 
 log() {
 	echo "$*" >&2
-	load_module ../libcfs/libcfs/libcfs
+	load_module ../lustre_compat/libcfs
 
 	local MSG="$*"
 	# Get rid of '

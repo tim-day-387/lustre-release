@@ -83,8 +83,8 @@ for fname in $(find lnet/include -type f -name \*.h); do
 done
 
 ## Lustre headers:
-for fname in $(find libcfs/include/libcfs -type f -name \*.h); do
-    target=$(echo ${fname} | sed -e 's:^libcfs/include/::g')
+for fname in $(find lustre_compat/include/libcfs -type f -name \*.h); do
+    target=$(echo ${fname} | sed -e 's:^lustre_compat/include/::g')
     install -D -m 0644 ${fname} ${kapi}/${target}
     >&2 echo "installing ${fname} => ${kapi}/${target}"
 done
