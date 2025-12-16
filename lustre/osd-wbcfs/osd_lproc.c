@@ -11,10 +11,10 @@
 
 #define DEBUG_SUBSYSTEM S_OSD
 
-#include <obd.h>
-#include <obd_class.h>
 #include <lprocfs_status.h>
 #include <lustre_scrub.h>
+#include <obd.h>
+#include <obd_class.h>
 
 #include "osd_internal.h"
 

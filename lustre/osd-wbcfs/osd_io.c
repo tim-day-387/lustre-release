@@ -8,12 +8,13 @@
  * Author: Yingjin Qian <qian@ddn.com>
  */
 
-#define DEBUG_SUBSYSTEM	S_OSD
+#define DEBUG_SUBSYSTEM S_OSD
 
 #include <linux/mm.h>
 #include <linux/swap.h>
 
 #include <lustre_compat.h>
+
 #include <obd_support.h>
 
 #include "osd_internal.h"

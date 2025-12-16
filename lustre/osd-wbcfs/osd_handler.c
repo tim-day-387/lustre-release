@@ -6,11 +6,11 @@
  * Author: Yingjin Qian <qian@ddn.com>
  */
 
-#define DEBUG_SUBSYSTEM	S_OSD
+#define DEBUG_SUBSYSTEM S_OSD
 
-#include <obd_support.h>
 #include <md_object.h>
 #include <obd_class.h>
+#include <obd_support.h>
 
 #include "osd_internal.h"
 #include "wbcfs.h"

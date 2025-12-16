@@ -6,21 +6,21 @@
  * Author: Yingjin Qian <qian@ddn.com>
  */
 
-#define DEBUG_SUBSYSTEM	S_OSD
+#define DEBUG_SUBSYSTEM S_OSD
 
-#include <linux/namei.h>
-#include <linux/file.h>
-#include <linux/uidgid.h>
-#include <linux/types.h>
-#include <linux/fs.h>
 #include <linux/dirent.h>
-#include <linux/xattr.h>
-#include <linux/swap.h>
-#include <linux/statfs.h>
+#include <linux/file.h>
+#include <linux/fs.h>
 #include <linux/fs_context.h>
+#include <linux/namei.h>
+#include <linux/statfs.h>
+#include <linux/swap.h>
+#include <linux/types.h>
+#include <linux/uidgid.h>
+#include <linux/xattr.h>
 
-#include <lustre_compat/linux/linux-mem.h>
 #include <lustre_compat.h>
+#include <lustre_compat/linux/linux-mem.h>
 
 #include "wbcfs.h"
 

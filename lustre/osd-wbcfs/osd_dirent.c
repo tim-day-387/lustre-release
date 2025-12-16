@@ -8,7 +8,7 @@
  * Author: Yingjin Qian <qian@ddn.com>
  */
 
-#define DEBUG_SUBSYSTEM	S_OSD
+#define DEBUG_SUBSYSTEM S_OSD
 
 #include <lustre_crypto.h>
 

@@ -13,10 +13,10 @@
 #ifndef _OSD_WBCFS_H_
 #define _OSD_WBCFS_H_
 
+#include <linux/iversion.h>
+#include <linux/percpu.h>
 #include <linux/spinlock.h>
 #include <linux/uidgid.h>
-#include <linux/percpu.h>
-#include <linux/iversion.h>
 
 #include <lustre_fid.h>
 

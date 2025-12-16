@@ -11,16 +11,17 @@
 #ifndef _OSD_INTERNAL_H
 #define _OSD_INTERNAL_H
 
-#include <linux/rwsem.h>
 #include <linux/dcache.h>
 #include <linux/dirent.h>
-#include <linux/statfs.h>
 #include <linux/file.h>
+#include <linux/rwsem.h>
+#include <linux/statfs.h>
+
 #include <lustre_compat.h>
 
+#include <dt_object.h>
 #include <obd.h>
 #include <obd_class.h>
-#include <dt_object.h>
 
 struct osd_object {
 	struct dt_object	 oo_dt;
