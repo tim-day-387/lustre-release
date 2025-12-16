@@ -14,12 +14,13 @@
  * Author: Sebastien Buisson sebastien.buisson@bull.net
  */
 
-#include <linux/types.h>
 #include <linux/security.h>
+#include <linux/types.h>
 #ifdef HAVE_LINUX_SELINUX_IS_ENABLED
 #include <linux/selinux.h>
 #endif
 #include <linux/xattr.h>
+
 #include "llite_internal.h"
 
 #ifndef XATTR_SELINUX_SUFFIX

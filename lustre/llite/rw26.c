@@ -17,18 +17,19 @@
 #include <linux/errno.h>
 #include <linux/fs.h>
 #include <linux/kernel.h>
+#include <linux/migrate.h>
 #include <linux/mm.h>
 #include <linux/mpage.h>
 #include <linux/pagemap.h>
 #include <linux/string.h>
 #include <linux/unistd.h>
 #include <linux/writeback.h>
-#include <linux/migrate.h>
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#include "llite_internal.h"
 #include <lustre_compat.h>
+
+#include "llite_internal.h"
 
 #ifdef HAVE_INVALIDATE_FOLIO
 /**

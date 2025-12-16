@@ -13,26 +13,29 @@
 
 #ifndef LLITE_INTERNAL_H
 #define LLITE_INTERNAL_H
-#include <obd.h>
-#include <lustre_disk.h>  /* for s2sbi */
-#include <lustre_linkea.h>
 
-/* for struct cl_lock_descr and struct cl_io */
-#include <cl_object.h>
-#include <lustre_lmv.h>
-#include <lustre_mdc.h>
-#include <lustre_intent.h>
-#include <linux/compat.h>
 #include <linux/aio.h>
+#include <linux/compat.h>
 #include <linux/parser.h>
 #include <linux/seqlock.h>
+
 #include <lustre_compat.h>
+
+#include <lustre_fid.h>
+#include <cl_object.h>
+#include <lu_object.h>
 #include <lustre_crypto.h>
+#include <lustre_disk.h>
+#include <lustre_intent.h>
+#include <lustre_linkea.h>
+#include <lustre_lmv.h>
+#include <lustre_mdc.h>
+#include <obd.h>
 #include <range_lock.h>
 
-#include "vvp_internal.h"
-#include "pcc.h"
 #include "foreign_symlink.h"
+#include "pcc.h"
+#include "vvp_internal.h"
 
 #ifndef FMODE_EXEC
 #define FMODE_EXEC 0

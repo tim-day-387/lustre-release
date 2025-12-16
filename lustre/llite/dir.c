@@ -13,29 +13,31 @@
  * Directory code for lustre client.
  */
 
+#include <linux/buffer_head.h> // for wait_on_buffer
 #include <linux/fs.h>
-#include <linux/pagemap.h>
 #include <linux/mm.h>
-#include <linux/version.h>
-#include <linux/security.h>
-#include <linux/user_namespace.h>
-#include <linux/uidgid.h>
-#include <linux/uaccess.h>
-#include <linux/buffer_head.h>   // for wait_on_buffer
+#include <linux/pagemap.h>
 #include <linux/pagevec.h>
+#include <linux/security.h>
+#include <linux/uaccess.h>
+#include <linux/uidgid.h>
+#include <linux/user_namespace.h>
+#include <linux/version.h>
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#include <obd_support.h>
-#include <obd_class.h>
-#include <uapi/linux/lustre/lustre_ioctl.h>
-#include <lustre_lib.h>
-#include <lustre_dlm.h>
 #include <lustre_compat.h>
+
+#include <uapi/linux/lustre/lustre_ioctl.h>
+
+#include <lustre_dlm.h>
 #include <lustre_fid.h>
 #include <lustre_kernelcomm.h>
-#include <lustre_swab.h>
+#include <lustre_lib.h>
 #include <lustre_quota.h>
+#include <lustre_swab.h>
+#include <obd_class.h>
+#include <obd_support.h>
 
 #include "llite_internal.h"
 

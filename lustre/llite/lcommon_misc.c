@@ -14,10 +14,10 @@
  */
 
 #define DEBUG_SUBSYSTEM S_LLITE
+#include <cl_object.h>
+#include <obd.h>
 #include <obd_class.h>
 #include <obd_support.h>
-#include <obd.h>
-#include <cl_object.h>
 
 #include "llite_internal.h"
 

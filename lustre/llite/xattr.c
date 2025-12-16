@@ -12,8 +12,8 @@
  */
 
 #include <linux/fs.h>
-#include <linux/sched.h>
 #include <linux/mm.h>
+#include <linux/sched.h>
 #include <linux/xattr.h>
 #ifdef HAVE_LINUX_SELINUX_IS_ENABLED
 #include <linux/selinux.h>
@@ -21,9 +21,9 @@
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#include <obd_support.h>
 #include <lustre_dlm.h>
 #include <lustre_swab.h>
+#include <obd_support.h>
 
 #include "llite_internal.h"
 

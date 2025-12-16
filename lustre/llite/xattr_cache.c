@@ -11,10 +11,12 @@
 #define DEBUG_SUBSYSTEM S_LLITE
 
 #include <linux/fs.h>
-#include <linux/sched.h>
 #include <linux/mm.h>
-#include <obd_support.h>
+#include <linux/sched.h>
+
 #include <lustre_dlm.h>
+#include <obd_support.h>
+
 #include "llite_internal.h"
 
 /* If we ever have hundreds of extended attributes, we might want to consider

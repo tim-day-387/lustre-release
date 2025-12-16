@@ -11,18 +11,19 @@
  * This file is part of Lustre, http://www.lustre.org/
  */
 
+#include <linux/delay.h>
 #include <linux/fs.h>
-#include <linux/sched.h>
+#include <linux/highmem.h>
 #include <linux/kthread.h>
 #include <linux/mm.h>
-#include <linux/highmem.h>
 #include <linux/pagemap.h>
-#include <linux/delay.h>
+#include <linux/sched.h>
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#include <obd_support.h>
 #include <lustre_dlm.h>
+#include <obd_support.h>
+
 #include "llite_internal.h"
 
 #define SA_OMITTED_ENTRY_MAX 8ULL

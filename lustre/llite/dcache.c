@@ -12,14 +12,14 @@
  */
 
 #include <linux/fs.h>
-#include <linux/sched.h>
-#include <linux/quotaops.h>
 #include <linux/kernel.h>
+#include <linux/quotaops.h>
+#include <linux/sched.h>
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#include <obd_support.h>
 #include <lustre_dlm.h>
+#include <obd_support.h>
 
 #include "llite_internal.h"
 

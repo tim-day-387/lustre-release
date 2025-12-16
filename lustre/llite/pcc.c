@@ -87,9 +87,12 @@
 #define DEBUG_SUBSYSTEM S_LLITE
 
 #include "pcc.h"
-#include <linux/namei.h>
+
 #include <linux/file.h>
+#include <linux/namei.h>
+
 #include <lustre_compat.h>
+
 #include "llite_internal.h"
 
 #ifdef HAVE_FILEATTR_GET

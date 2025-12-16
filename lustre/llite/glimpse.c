@@ -16,14 +16,14 @@
  * Author: Oleg Drokin <oleg.drokin@sun.com>
  */
 
-#include <obd_class.h>
-#include <obd_support.h>
-#include <obd.h>
+#include <linux/file.h>
+#include <linux/pagemap.h>
 
 #include <lustre_dlm.h>
 #include <lustre_mdc.h>
-#include <linux/pagemap.h>
-#include <linux/file.h>
+#include <obd.h>
+#include <obd_class.h>
+#include <obd_support.h>
 
 #include "cl_object.h"
 #include "llite_internal.h"

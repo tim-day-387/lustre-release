@@ -18,10 +18,12 @@
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
+#include <linux/kallsyms.h>
+
 #include <obd.h>
+
 #include "llite_internal.h"
 #include "vvp_internal.h"
-#include <linux/kallsyms.h>
 
 /*
  * Vvp device and device type functions.

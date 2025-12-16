@@ -18,15 +18,18 @@
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#include <obd.h>
-#include <linux/pagevec.h>
-#include <linux/memcontrol.h>
+#include <linux/types.h>
 #include <linux/falloc.h>
+#include <linux/memcontrol.h>
+#include <linux/pagevec.h>
+
+#include <lustre_compat.h>
+#include <lustre_compat/linux/linux-misc.h>
+
+#include <obd.h>
 
 #include "llite_internal.h"
 #include "vvp_internal.h"
-#include <lustre_compat.h>
-#include <lustre_compat/linux/linux-misc.h>
 
 static struct vvp_io *cl2vvp_io(const struct lu_env *env,
 				const struct cl_io_slice *slice)

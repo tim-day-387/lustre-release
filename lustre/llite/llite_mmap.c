@@ -11,16 +11,17 @@
  * This file is part of Lustre, http://www.lustre.org/
  */
 
-#include <linux/errno.h>
 #include <linux/delay.h>
+#include <linux/errno.h>
+#include <linux/file.h>
 #include <linux/kernel.h>
 #include <linux/mm.h>
-#include <linux/file.h>
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#include "llite_internal.h"
 #include <lustre_compat.h>
+
+#include "llite_internal.h"
 
 static const struct vm_operations_struct ll_file_vm_ops;
 

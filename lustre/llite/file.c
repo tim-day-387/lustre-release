@@ -16,21 +16,23 @@
  */
 
 #define DEBUG_SUBSYSTEM S_LLITE
-#include <lustre_dlm.h>
-#include <linux/pagemap.h>
-#include <linux/file.h>
-#include <linux/sched.h>
-#include <linux/user_namespace.h>
 #include <linux/capability.h>
-#include <linux/uidgid.h>
 #include <linux/falloc.h>
+#include <linux/file.h>
 #include <linux/ktime.h>
+#include <linux/pagemap.h>
+#include <linux/sched.h>
+#include <linux/uidgid.h>
+#include <linux/user_namespace.h>
+
+#include <lustre_dlm.h>
 #ifdef HAVE_LINUX_FILELOCK_HEADER
 #include <linux/filelock.h>
 #endif
 #include <lustre_compat/linux/linux-misc.h>
 
 #include <uapi/linux/lustre/lustre_ioctl.h>
+
 #include <lustre_swab.h>
 
 #include "cl_object.h"

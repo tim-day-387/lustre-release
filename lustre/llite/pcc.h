@@ -14,10 +14,11 @@
 #define LLITE_PCC_H
 
 #include <linux/fs.h>
-#include <linux/mm.h>
 #include <linux/kref.h>
-#include <linux/types.h>
+#include <linux/mm.h>
 #include <linux/seq_file.h>
+#include <linux/types.h>
+
 #include <uapi/linux/lustre/lustre_user.h>
 
 extern struct kmem_cache *pcc_inode_slab;

@@ -39,19 +39,22 @@
 #include <lustre_compat/linux/linux-misc.h>
 
 #include <uapi/linux/lustre/lustre_ioctl.h>
+
 #include <lustre_ioctl_old.h>
 #ifdef HAVE_UAPI_LINUX_MOUNT_H
 #include <uapi/linux/mount.h>
 #endif
 
-#include <lustre_ha.h>
-#include <lustre_dlm.h>
+#include <uapi/linux/lustre/lustre_param.h>
+
+#include <cl_object.h>
 #include <lprocfs_status.h>
 #include <lustre_disk.h>
-#include <uapi/linux/lustre/lustre_param.h>
+#include <lustre_dlm.h>
+#include <lustre_ha.h>
 #include <lustre_log.h>
-#include <cl_object.h>
 #include <obd_cksum.h>
+
 #include "llite_internal.h"
 
 struct kmem_cache *ll_file_data_slab;

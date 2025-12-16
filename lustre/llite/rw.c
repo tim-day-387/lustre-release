@@ -13,30 +13,29 @@
  * Lustre Lite I/O page cache routines shared by different kernel revs
  */
 
+#include <linux/errno.h>
+#include <linux/file.h>
+#include <linux/fs.h>
 #include <linux/kernel.h>
 #include <linux/mm.h>
-#include <linux/string.h>
+#include <linux/pagemap.h>
 #include <linux/stat.h>
-#include <linux/errno.h>
+#include <linux/string.h>
 #include <linux/unistd.h>
 #include <linux/writeback.h>
-#include <asm/uaccess.h>
 
-#include <linux/fs.h>
-#include <linux/file.h>
-#include <linux/stat.h>
 #include <asm/uaccess.h>
-#include <linux/mm.h>
-#include <linux/pagemap.h>
 /* current_is_kswapd() */
 #include <linux/swap.h>
 #include <linux/task_io_accounting_ops.h>
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#include <obd_cksum.h>
-#include "llite_internal.h"
 #include <lustre_compat.h>
+
+#include <obd_cksum.h>
+
+#include "llite_internal.h"
 
 static void ll_ra_stats_inc_sbi(struct ll_sb_info *sbi, enum ra_stat which);
 

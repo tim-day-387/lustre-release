@@ -16,19 +16,19 @@
 #define DEBUG_SUBSYSTEM S_LLITE
 
 #include <linux/fs.h>
-#include <linux/sched.h>
-#include <linux/mm.h>
-#include <linux/quotaops.h>
 #include <linux/highmem.h>
+#include <linux/mm.h>
 #include <linux/pagemap.h>
+#include <linux/quotaops.h>
 #include <linux/rbtree.h>
+#include <linux/sched.h>
 
+#include <cl_object.h>
+#include <lustre_dlm.h>
+#include <lustre_fid.h>
+#include <lustre_mdc.h>
 #include <obd.h>
 #include <obd_support.h>
-#include <lustre_fid.h>
-#include <lustre_dlm.h>
-#include <lustre_mdc.h>
-#include <cl_object.h>
 
 #include "llite_internal.h"
 #include "vvp_internal.h"

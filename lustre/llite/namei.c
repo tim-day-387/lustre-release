@@ -11,22 +11,23 @@
  * This file is part of Lustre, http://www.lustre.org/
  */
 
-#include <linux/fs.h>
-#include <linux/sched.h>
-#include <linux/mm.h>
-#include <linux/iversion.h>
 #include <linux/file.h>
-#include <linux/quotaops.h>
+#include <linux/fs.h>
 #include <linux/highmem.h>
+#include <linux/iversion.h>
+#include <linux/mm.h>
 #include <linux/pagemap.h>
-#include <linux/user_namespace.h>
+#include <linux/quotaops.h>
+#include <linux/sched.h>
 #include <linux/uidgid.h>
+#include <linux/user_namespace.h>
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#include <obd_support.h>
-#include <lustre_fid.h>
 #include <lustre_dlm.h>
+#include <lustre_fid.h>
+#include <obd_support.h>
+
 #include "llite_internal.h"
 
 #ifndef HAVE_USER_NAMESPACE_ARG

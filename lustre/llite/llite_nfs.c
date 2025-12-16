@@ -20,6 +20,7 @@
 #include <linux/exportfs.h>
 
 #include <lustre_fid.h>
+
 #include "llite_internal.h"
 
 u32 get_uuid2int(const char *name, int len)

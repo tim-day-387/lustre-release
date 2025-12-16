@@ -13,18 +13,20 @@
 
 #define DEBUG_SUBSYSTEM S_LLITE
 
-#define D_MOUNT (D_SUPER | D_CONFIG/*|D_WARNING */)
+#define D_MOUNT (D_SUPER | D_CONFIG /*|D_WARNING */)
 
+#include <linux/fs.h>
+#include <linux/init.h>
 #include <linux/module.h>
+#include <linux/random.h>
 #include <linux/types.h>
 #include <linux/version.h>
-#include <lustre_ha.h>
-#include <lustre_dlm.h>
-#include <lustre_quota.h>
-#include <linux/init.h>
-#include <linux/fs.h>
-#include <linux/random.h>
+
 #include <lprocfs_status.h>
+#include <lustre_dlm.h>
+#include <lustre_ha.h>
+#include <lustre_quota.h>
+
 #include "llite_internal.h"
 #include "vvp_internal.h"
 
