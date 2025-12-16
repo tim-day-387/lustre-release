@@ -314,10 +314,6 @@ static inline void cfs_cpu_fini(void)
 
 #endif /* CONFIG_SMP */
 
-/* Module parameters */
-extern int cpu_npartitions;
-extern char *cpu_pattern;
-
 static inline
 struct workqueue_struct *cfs_cpt_bind_workqueue(const char *wq_name,
 						struct cfs_cpt_table *tbl,

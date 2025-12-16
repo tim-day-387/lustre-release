@@ -79,6 +79,7 @@ EXPORT_SYMBOL(cfs_cpt_tab);
  *  1 : disable multiple partitions
  * >1 : specify number of partitions
  */
+int cpu_npartitions;
 module_param(cpu_npartitions, int, 0444);
 MODULE_PARM_DESC(cpu_npartitions, "# of CPU partitions");
 
@@ -113,6 +114,7 @@ MODULE_PARM_DESC(cpu_npartitions, "# of CPU partitions");
  *
  * NB: If user specified cpu_pattern, cpu_npartitions will be ignored
  */
+char *cpu_pattern = "N";
 module_param(cpu_pattern, charp, 0444);
 MODULE_PARM_DESC(cpu_pattern, "CPU partitions pattern");
 
