@@ -18,6 +18,7 @@
 #include <linux/percpu.h>
 #include <linux/iversion.h>
 
+#include <linux/libcfs/libcfs.h>
 #include <lustre_fid.h>
 
 #include "index.h"

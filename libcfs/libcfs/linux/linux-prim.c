@@ -81,22 +81,3 @@ void __exit cfs_arch_exit(void)
 	llcrypt_exit();
 #endif
 }
-
-static unsigned int libcfs_reserved_cache;
-module_param(libcfs_reserved_cache, int, 0644);
-MODULE_PARM_DESC(libcfs_reserved_cache, "system page cache reservation in mbytes (for arc cache)");
-
-#ifdef HAVE_TOTALRAM_PAGES_AS_FUNC
-  #define _totalram_pages() totalram_pages()
-#else
-  #define _totalram_pages() totalram_pages
-#endif
-
-unsigned long cfs_totalram_pages(void)
-{
-	if (libcfs_reserved_cache > _totalram_pages()/2)
-		libcfs_reserved_cache = _totalram_pages() / 2;
-
-	return _totalram_pages() - libcfs_reserved_cache;
-}
-EXPORT_SYMBOL(cfs_totalram_pages);

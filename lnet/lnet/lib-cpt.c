@@ -55,6 +55,19 @@ struct cfs_cpt_table {
 	nodemask_t			*ctb_nodemask;
 };
 
+static unsigned int libcfs_reserved_cache;
+module_param(libcfs_reserved_cache, int, 0644);
+MODULE_PARM_DESC(libcfs_reserved_cache, "system page cache reservation in mbytes (for other subsystems)");
+
+unsigned long cfs_totalram_pages(void)
+{
+	if (libcfs_reserved_cache > _totalram_pages()/2)
+		libcfs_reserved_cache = _totalram_pages() / 2;
+
+	return _totalram_pages() - libcfs_reserved_cache;
+}
+EXPORT_SYMBOL(cfs_totalram_pages);
+
 /** Global CPU partition table */
 struct cfs_cpt_table *cfs_cpt_tab __read_mostly;
 EXPORT_SYMBOL(cfs_cpt_tab);

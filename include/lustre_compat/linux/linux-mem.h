@@ -28,7 +28,11 @@
 #include <linux/sched/mm.h>
 #endif
 
-unsigned long cfs_totalram_pages(void);
+#ifdef HAVE_TOTALRAM_PAGES_AS_FUNC
+  #define _totalram_pages() totalram_pages()
+#else
+  #define _totalram_pages() totalram_pages
+#endif
 
 #ifndef HAVE_BITMAP_ALLOC
 static inline unsigned long *bitmap_alloc(unsigned int nbits, gfp_t flags)
