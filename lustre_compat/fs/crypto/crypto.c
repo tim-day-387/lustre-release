@@ -482,7 +482,7 @@ fail:
 	return res;
 }
 
-void llcrypt_msg(const struct inode *inode, int mask,
+void llcrypt_msg(const struct inode *inode, bool err,
 		 const char *fmt, ...)
 {
 	static DEFINE_RATELIMIT_STATE(rs, DEFAULT_RATELIMIT_INTERVAL,
@@ -496,11 +496,21 @@ void llcrypt_msg(const struct inode *inode, int mask,
 	va_start(args, fmt);
 	vaf.fmt = fmt;
 	vaf.va = &args;
-	if (inode)
-		CDEBUG(mask, "llcrypt (%s, inode %lu): %pV\n",
-		       inode->i_sb->s_id, inode->i_ino, &vaf);
-	else
-		CDEBUG(mask, "llcrypt: %pV\n", &vaf);
+
+	if (!err) {
+		if (inode)
+			pr_warn("llcrypt (%s, inode %lu): %pV\n",
+				inode->i_sb->s_id, inode->i_ino, &vaf);
+		else
+			pr_warn("llcrypt: %pV\n", &vaf);
+	} else {
+		if (inode)
+			pr_err("llcrypt (%s, inode %lu): %pV\n",
+			       inode->i_sb->s_id, inode->i_ino, &vaf);
+		else
+			pr_err("llcrypt: %pV\n", &vaf);
+	}
+
 	va_end(args);
 }
 
@@ -550,7 +560,7 @@ int __init llcrypt_init(void)
 
 	err = set_llcrypt_crypto_engine_type();
 	if (err) {
-		CERROR("libcfs: bad crypto engine provided via 'client_encryption_engine': rc = %d\n",
+		pr_err("libcfs: bad crypto engine provided via 'client_encryption_engine': rc = %d\n",
 		       err);
 		goto fail_free_info;
 	}

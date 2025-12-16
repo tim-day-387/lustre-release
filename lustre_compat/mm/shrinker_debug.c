@@ -204,8 +204,7 @@ void ll_shrinker_free(struct shrinker *shrinker)
 	unregister_shrinker(shrinker);
 #endif /* !HAVE_SHRINKER_ALLOC */
 
-#ifndef CONFIG_SHRINKER_DEBUG
-	LIBCFS_FREE_PRE(s, sizeof(*s), "kfreed");
+#if defined(HAVE_REGISTER_SHRINKER_FORMAT_NAMED) || !defined(HAVE_SHRINKER_ALLOC) || !defined(CONFIG_SHRINKER_DEBUG)
 	kfree(s);
 #endif
 }
@@ -225,7 +224,7 @@ struct shrinker *ll_shrinker_alloc(unsigned int flags, const char *fmt, ...)
 	 * that have the shrinker debugfs interface turned on.
 	 */
 #if defined(HAVE_REGISTER_SHRINKER_FORMAT_NAMED) || !defined(HAVE_SHRINKER_ALLOC) || !defined(CONFIG_SHRINKER_DEBUG)
-	LIBCFS_ALLOC(s, sizeof(*s));
+	s = kzalloc(sizeof(*s), GFP_KERNEL);
 	if (s) {
  #ifdef HAVE_REGISTER_SHRINKER_FORMAT_NAMED
 		s->vaf.fmt = fmt;
