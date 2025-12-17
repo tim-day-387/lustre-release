@@ -12,8 +12,9 @@
 #include <linux/kprobes.h>
 #include <lustre_compat/linux/security.h>
 #include <lustre_compat/linux/workqueue.h>
+#include <lustre_compat/linux/linux-misc.h>
 
-#include <linux/libcfs/libcfs.h>
+#include "module.h"
 
 static void *(*__cfs_kallsyms_lookup_name)(const char *name);
 

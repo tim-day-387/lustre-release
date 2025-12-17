@@ -11,33 +11,13 @@
  * This file is part of Lustre, http://www.lustre.org/
  */
 
-#define DEBUG_SUBSYSTEM S_LNET
-
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/fs.h>
-#include <linux/sched.h>
-#ifdef HAVE_SCHED_HEADERS
-#include <linux/sched/mm.h>
-#endif
-#include <linux/slab.h>
-#include <linux/uaccess.h>
-#include <net/netlink.h>
 
-#if defined(CONFIG_KGDB)
-#include <asm/kgdb.h>
-#endif
-
-#include <lustre_compat.h>
-#include <lustre_compat/linux/timer.h>
-#include <lustre_compat/linux/linux-misc.h>
-#include <lustre_compat/linux/linux-mem.h>
-#include <lustre_compat/linux/xarray.h>
-#include <lustre_compat/linux/wait_bit.h>
-#include <lustre_compat/linux/wait.h>
-#include <lustre_compat/linux/shrinker.h>
 #include <lustre_compat/linux/vmalloc.h>
 #include <lustre_crypto.h>
+
+#include "module.h"
 
 int __init cfs_arch_init(void)
 {

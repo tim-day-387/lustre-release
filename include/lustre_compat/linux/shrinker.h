@@ -24,15 +24,6 @@ struct ll_shrinker {
 #define ll_shrinker	shrinker
 #endif
 
-#if !defined(CONFIG_SHRINKER_DEBUG)
-void shrinker_debugfs_fini(void);
-int shrinker_debugfs_init(void);
-#else
-
-static inline void shrinker_debugfs_fini(void) {};
-static inline int shrinker_debugfs_init(void) { return 0; };
-#endif
-
 struct shrinker *ll_shrinker_alloc(unsigned int flags,
 				   const char *fmt, ...);
 void ll_shrinker_register(struct shrinker *shrinker);

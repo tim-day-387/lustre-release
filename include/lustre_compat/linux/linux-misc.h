@@ -31,7 +31,6 @@ static inline unsigned long cfs_time_seconds(time64_t seconds)
 
 /* TODO: This will soon be private... */
 void *cfs_kallsyms_lookup_name(const char *name);
-int lustre_symbols_init(void);
 
 /*
  * Since 4.20 commit 00e23707442a75b404392cef1405ab4fd498de6b
@@ -150,9 +149,6 @@ static inline int kref_read(const struct kref *kref)
 	return atomic_read(&kref->refcount);
 }
 #endif /* HAVE_KREF_READ */
-
-int cfs_arch_init(void);
-void cfs_arch_exit(void);
 
 #ifndef container_of_safe
 /**

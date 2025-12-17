@@ -16,10 +16,7 @@
 #define _LLCRYPT_PRIVATE_H
 
 #include <lustre_compat/linux/llcrypt.h>
-#include <linux/libcfs/libcfs_debug.h>
-#include <linux/libcfs/libcfs_private.h>
 #include <crypto/hash.h>
-#include <lustre_disk.h>
 #include <uapi/linux/lustre/lgss.h>
 
 #ifndef CRYPTO_TFM_REQ_FORBID_WEAK_KEYS

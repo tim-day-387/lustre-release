@@ -13,28 +13,8 @@
 
 #include <linux/module.h>
 #include <linux/kernel.h>
-#include <linux/mm.h>
-#include <linux/string.h>
-#include <linux/stat.h>
-#include <linux/errno.h>
-#include <linux/unistd.h>
-#include <net/sock.h>
-#include <linux/uio.h>
-#include <linux/uaccess.h>
 
-#include <linux/fs.h>
-#include <linux/file.h>
-#include <linux/list.h>
-
-#include <linux/sysctl.h>
-#include <linux/debugfs.h>
-#include <asm/div64.h>
-
-#define DEBUG_SUBSYSTEM S_LNET
-
-#include <linux/libcfs/libcfs.h>
-#include <lnet/lib-lnet.h>
-#include <uapi/linux/lustre/lustre_ver.h>
+#include "module.h"
 
 static int __init libcfs_init(void)
 {
@@ -56,7 +36,7 @@ static void __exit libcfs_exit(void)
 
 MODULE_AUTHOR("OpenSFS, Inc. <http://www.lustre.org/>");
 MODULE_DESCRIPTION("Lustre helper library");
-MODULE_VERSION(LIBCFS_VERSION);
+MODULE_VERSION("1.0");
 MODULE_LICENSE("GPL");
 
 module_init(libcfs_init);
