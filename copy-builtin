@@ -179,7 +179,10 @@ function swap_symbols() {
 
     find "$KERNEL_DIR/net/lnet" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
     find "$KERNEL_DIR/fs/lustre" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
-    find "$KERNEL_DIR/include" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/include/lustre/" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/include/lnet" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/include/libcfs" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
+    find "$KERNEL_DIR/include/lustre_compat" -type f -exec sed -i "s/$old_sym/$new_sym/g" {} +
 }
 
 function swap_headers() {
@@ -192,7 +195,7 @@ function swap_headers() {
 
 function swap_all_symbols() {
     swap_symbols compat_vfree_atomic vfree_atomic
-    swap_symbols cfs_totalram_pages totalram_pages
+    swap_symbols _totalram_pages totalram_pages
     swap_symbols ll_shrinker_alloc shrinker_alloc
     swap_symbols ll_shrinker_register shrinker_register
     swap_symbols ll_shrinker_free shrinker_free
