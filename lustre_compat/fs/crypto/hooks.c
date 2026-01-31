@@ -9,6 +9,10 @@
  * tags/v5.4
  */
 
+#include <lustre_compat/linux/llcrypt.h>
+
+#ifdef CONFIG_LL_ENCRYPTION
+
 #include "llcrypt_private.h"
 
 /**
@@ -320,3 +324,5 @@ err_kfree:
 	return ERR_PTR(err);
 }
 EXPORT_SYMBOL_GPL(llcrypt_get_symlink);
+
+#endif /* CONFIG_LL_ENCRYPTION */

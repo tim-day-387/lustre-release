@@ -24,6 +24,10 @@
  * tags/v5.4
  */
 
+#include <lustre_compat/linux/llcrypt.h>
+
+#ifdef CONFIG_LL_ENCRYPTION
+
 #include <linux/pagemap.h>
 #include <linux/mempool.h>
 #include <linux/module.h>
@@ -602,3 +606,5 @@ void __exit llcrypt_exit(void)
 	kmem_cache_destroy(llcrypt_ctx_cachep);
 	destroy_workqueue(llcrypt_read_workqueue);
 }
+
+#endif /* CONFIG_LL_ENCRYPTION */

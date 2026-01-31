@@ -22,6 +22,10 @@
  * tags/v5.4
  */
 
+#include <lustre_compat/linux/llcrypt.h>
+
+#ifdef CONFIG_LL_ENCRYPTION
+
 #include <crypto/skcipher.h>
 #include <linux/key-type.h>
 #include <linux/seq_file.h>
@@ -1007,3 +1011,5 @@ void __exit llcrypt_exit_keyring(void)
 	unregister_key_type(&key_type_llcrypt_user);
 	unregister_key_type(&key_type_llcrypt);
 }
+
+#endif /* CONFIG_LL_ENCRYPTION */

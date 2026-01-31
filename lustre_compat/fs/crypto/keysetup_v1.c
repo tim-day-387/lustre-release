@@ -24,6 +24,10 @@
  *    managed alongside the master keys in the filesystem-level keyring)
  */
 
+#include <lustre_compat/linux/llcrypt.h>
+
+#ifdef CONFIG_LL_ENCRYPTION
+
 #include <crypto/algapi.h>
 #include <crypto/skcipher.h>
 #include <keys/user-type.h>
@@ -348,3 +352,5 @@ int llcrypt_setup_v1_file_key_via_subscribed_keyrings(struct llcrypt_info *ci)
 	key_put(key);
 	return err;
 }
+
+#endif /* CONFIG_LL_ENCRYPTION */

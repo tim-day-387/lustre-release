@@ -13,6 +13,10 @@
  * tags/v5.4
  */
 
+#include <lustre_compat/linux/llcrypt.h>
+
+#ifdef CONFIG_LL_ENCRYPTION
+
 #include <crypto/hash.h>
 #ifdef HAVE_CRYPTO_SHA2_HEADER
 #include <crypto/sha2.h>
@@ -186,3 +190,5 @@ void llcrypt_destroy_hkdf(struct llcrypt_hkdf *hkdf)
 {
 	crypto_free_shash(hkdf->hmac_tfm);
 }
+
+#endif /* CONFIG_LL_ENCRYPTION */

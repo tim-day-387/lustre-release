@@ -12,6 +12,10 @@
  * tags/v5.4
  */
 
+#include <lustre_compat/linux/llcrypt.h>
+
+#ifdef CONFIG_LL_ENCRYPTION
+
 #include <crypto/aes.h>
 #ifdef HAVE_CRYPTO_SHA2_HEADER
 #include <crypto/sha2.h>
@@ -659,3 +663,5 @@ bool llcrypt_has_encryption_key(const struct inode *inode)
 	return READ_ONCE(llcrypt_info_nocast(inode)) != NULL;
 }
 EXPORT_SYMBOL_GPL(llcrypt_has_encryption_key);
+
+#endif /* CONFIG_LL_ENCRYPTION */

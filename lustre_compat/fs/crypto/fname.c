@@ -15,6 +15,10 @@
  * tags/v5.4
  */
 
+#include <lustre_compat/linux/llcrypt.h>
+
+#ifdef CONFIG_LL_ENCRYPTION
+
 #include <linux/scatterlist.h>
 #include <crypto/skcipher.h>
 #include "llcrypt_private.h"
@@ -562,3 +566,5 @@ errout:
 	return ret;
 }
 EXPORT_SYMBOL(llcrypt_setup_filename);
+
+#endif /* CONFIG_LL_ENCRYPTION */

@@ -14,6 +14,10 @@
  * tags/v5.4
  */
 
+#include <lustre_compat/linux/llcrypt.h>
+
+#ifdef CONFIG_LL_ENCRYPTION
+
 #include <linux/random.h>
 #include <linux/string.h>
 #include <linux/mount.h>
@@ -592,3 +596,5 @@ int llcrypt_inherit_context(struct inode *parent, struct inode *child,
 	return preload ? llcrypt_get_encryption_info(child): 0;
 }
 EXPORT_SYMBOL(llcrypt_inherit_context);
+
+#endif /* CONFIG_LL_ENCRYPTION */
