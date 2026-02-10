@@ -14,7 +14,7 @@ lsrctree := $(realpath $(dir $(this-makefile)))
 ifneq (@LDISKFS_SUBDIR@,)
 obj-m += @LDISKFS_SUBDIR@/
 endif
-obj-m += libcfs/ lnet/
+obj-m += lustre_compat/ lnet/
 obj-m += lustre/
 
 subdir-ccflags-y := -include $(lsrctree)/undef.h
