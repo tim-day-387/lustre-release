@@ -17,7 +17,11 @@ SUBDIRS := @LDISKFS_SUBDIR@ \
 	lib \
 	libcfs \
 	lnet \
-	lustre
+	lustre/include \
+	lustre/utils \
+	lustre/tests \
+	lustre/scripts \
+	lustre/conf
 
 DIST_SUBDIRS := ldiskfs \
 	lustre-iokit \
@@ -25,7 +29,11 @@ DIST_SUBDIRS := ldiskfs \
 	lib \
 	libcfs \
 	lnet \
-	lustre \
+	lustre/include \
+	lustre/utils \
+	lustre/tests \
+	lustre/scripts \
+	lustre/conf \
 	config
 
 AUTOMAKE_OPTIONS = foreign
@@ -201,18 +209,16 @@ EXTRA_DIST = @PACKAGE_TARNAME@.spec	\
 	undef.h				\
 	autogen.sh			\
 	modules.order			\
-	config/lustre-version.m4
+	config/lustre-version.m4 \
+	contrib \
+	lustre/kernel_patches \
+	lustre/ChangeLog \
+	rpm
 
 # Find Lustre kernel modules
 modulefs_DATA = $(shell find lustre/ -name *.ko)
 modulefs_DATA += $(shell find ldiskfs/ -name *.ko)
 EXTRA_DIST += $(modulefs_DATA)
-
-# contrib is a directory.  Putting a directory in EXTRA_DIST
-# recursively includes the entire directory contents in the
-# distribution tarball (the tarball created with "make dist").
-EXTRA_DIST += contrib
-EXTRA_DIST += rpm
 
 rpm-local:
 	@(if test -z "$(RPMBUILD)"; then \
