@@ -414,6 +414,7 @@ AM_CONDITIONAL([RHEL], [test -f /etc/redhat-release -o -f /etc/openEuler-release
 AM_CONDITIONAL([SUSE], [test -f /etc/SUSE-brand -o -f /etc/SuSE-release])
 AM_CONDITIONAL([UBUNTU], [test x$UBUNTU_KERNEL = xyes])
 AM_CONDITIONAL([BUILD_LUTF], [test x$enable_lutf = xyes])
+AM_CONDITIONAL([ENABLE_LIBCFS_CDEBUG], [test "x$enable_libcfs_cdebug" = "xyes"])
 
 LN_CONDITIONALS
 LC_CONDITIONALS

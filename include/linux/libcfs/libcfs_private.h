@@ -90,11 +90,25 @@ do {									\
 # define LINVRNT(exp) ((void)sizeof!!(exp))
 #endif
 
+#ifdef CDEBUG_ENABLED
 void
 #ifdef HAVE_LBUG_WITH_LOC_IN_OBJTOOL
 __noreturn
 #endif
 lbug_with_loc(struct libcfs_debug_msg_data *msg);
+#else /* !CDEBUG_ENABLED */
+static inline void
+#ifdef HAVE_LBUG_WITH_LOC_IN_OBJTOOL
+__noreturn
+#endif
+lbug_with_loc(struct libcfs_debug_msg_data *msgdata)
+{
+	pr_emerg("LustreError: LBUG at %s:%d:%s()\n",
+		 msgdata->msg_file, msgdata->msg_line, msgdata->msg_fn);
+	dump_stack();
+	panic("LBUG");
+}
+#endif /* CDEBUG_ENABLED */
 
 #define LBUG()                                                          \
 do {                                                                    \
@@ -106,7 +120,7 @@ do {                                                                    \
 /*
  * Memory
  */
-#ifdef LIBCFS_DEBUG
+#if defined(LIBCFS_DEBUG) && defined(CDEBUG_ENABLED)
 
 extern atomic64_t libcfs_kmem;
 
@@ -126,8 +140,8 @@ do {						\
 #else
 # define libcfs_kmem_inc(ptr, size) do {} while (0)
 # define libcfs_kmem_dec(ptr, size) do {} while (0)
-# define libcfs_kmem_read()	(0)
-#endif /* LIBCFS_DEBUG */
+# define libcfs_kmem_read()	(0LL)
+#endif /* LIBCFS_DEBUG && CDEBUG_ENABLED */
 
 #ifndef LIBCFS_VMALLOC_SIZE
 #define LIBCFS_VMALLOC_SIZE        (2 << PAGE_SHIFT) /* 2 pages */
@@ -218,11 +232,23 @@ do {									\
 
 /******************************************************************************/
 
+#ifdef CDEBUG_ENABLED
 void libcfs_debug_dumplog(void);
 int libcfs_debug_init(unsigned long bufsize);
 int libcfs_debug_cleanup(void);
 int libcfs_debug_clear_buffer(void);
 int libcfs_debug_mark_buffer(const char *text);
+#else
+static inline void libcfs_debug_dumplog(void) { }
+static inline int libcfs_debug_init(unsigned long bufsize) { return 0; }
+static inline int libcfs_debug_cleanup(void) { return 0; }
+static inline int libcfs_debug_clear_buffer(void) { return 0; }
+static inline int libcfs_debug_mark_buffer(const char *text)
+{
+	pr_info("Lustre: DEBUG MARKER: %s\n", text);
+	return 0;
+}
+#endif
 
 #define CFS_ALLOC_PTR(ptr)      LIBCFS_ALLOC(ptr, sizeof(*(ptr)));
 #define CFS_ALLOC_PTR_ARRAY(ptr, count)			\
