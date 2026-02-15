@@ -28,4 +28,6 @@ include $(src)/lib/Makefile
 libcfs-y += $(patsubst %,lib/%,$(lib_objs))
 
 # Debug objects
+ifdef COMPAT_LIBCFS_CDEBUG
 libcfs-y += ../debug/module.o ../debug/debug.o ../debug/fail.o ../debug/tracefile.o
+endif

@@ -20,24 +20,6 @@
 #include <linux/libcfs/libcfs_debug.h>
 #include <linux/libcfs/libcfs_private.h>
 
-extern unsigned long cfs_fail_loc;
-extern unsigned int cfs_fail_val;
-extern int cfs_fail_err;
-
-extern wait_queue_head_t cfs_race_waitq;
-extern int cfs_race_state;
-
-int __cfs_fail_check_set(__u32 id, __u32 value, int set);
-int __cfs_fail_timeout_set(const char *file, const char *func, int line,
-			   __u32 id, __u32 value, int ms, int set);
-
-enum {
-	CFS_FAIL_LOC_NOSET = 0,
-	CFS_FAIL_LOC_ORSET = 1,
-	CFS_FAIL_LOC_RESET = 2,
-	CFS_FAIL_LOC_VALUE = 3
-};
-
 /*
  * Failure ranges:
  *	"0x0100 - 0x3fff" for Lustre
@@ -64,6 +46,26 @@ enum {
 #define CFS_FAIL_USR1        0x04000000 /* user flag */
 
 /* CFS_FAULT may be combined with any one of the above flags. */
+
+#ifdef CDEBUG_ENABLED
+
+extern unsigned long cfs_fail_loc;
+extern unsigned int cfs_fail_val;
+extern int cfs_fail_err;
+
+extern wait_queue_head_t cfs_race_waitq;
+extern int cfs_race_state;
+
+int __cfs_fail_check_set(__u32 id, __u32 value, int set);
+int __cfs_fail_timeout_set(const char *file, const char *func, int line,
+			   __u32 id, __u32 value, int ms, int set);
+
+enum {
+	CFS_FAIL_LOC_NOSET = 0,
+	CFS_FAIL_LOC_ORSET = 1,
+	CFS_FAIL_LOC_RESET = 2,
+	CFS_FAIL_LOC_VALUE = 3
+};
 #define CFS_FAULT	     0x02000000 /* match any CFS_FAULT_CHECK */
 
 static inline bool CFS_FAIL_PRECHECK(__u32 id)
@@ -248,5 +250,37 @@ static inline void cfs_race_wakeup_loc(const char *file, const char *func,
 	}
 }
 #define CFS_RACE_WAKEUP(id) cfs_race_wakeup_loc(__FILE__, __func__, __LINE__,id)
+
+#else /* !CDEBUG_ENABLED */
+
+static inline int __cfs_fail_noop(void) { return 0; }
+
+#define CFS_FAIL_CHECK(id)			__cfs_fail_noop()
+#define CFS_FAIL_CHECK_QUIET(id)		__cfs_fail_noop()
+#define CFS_FAIL_CHECK_VALUE(id, value)		__cfs_fail_noop()
+#define CFS_FAIL_CHECK_VALUE_QUIET(id, value)	__cfs_fail_noop()
+#define CFS_FAIL_CHECK_ORSET(id, value)		__cfs_fail_noop()
+#define CFS_FAIL_CHECK_ORSET_QUIET(id, value)	__cfs_fail_noop()
+#define CFS_FAIL_CHECK_RESET(id, value)		__cfs_fail_noop()
+#define CFS_FAIL_CHECK_RESET_QUIET(id, value)	__cfs_fail_noop()
+#define CFS_FAIL_TIMEOUT(id, secs)		__cfs_fail_noop()
+#define CFS_FAIL_TIMEOUT_MS(id, ms)		__cfs_fail_noop()
+#define CFS_FAIL_TIMEOUT_ORSET(id, value, secs)	__cfs_fail_noop()
+#define CFS_FAIL_TIMEOUT_RESET(id, value, secs)	__cfs_fail_noop()
+#define CFS_FAIL_TIMEOUT_MS_ORSET(id, value, ms) __cfs_fail_noop()
+#define CFS_FAULT_CHECK(id)			__cfs_fail_noop()
+#define CFS_RACE(id)				do { } while (0)
+#define CFS_RACE_WAIT(id)			do { } while (0)
+#define CFS_RACE_WAKEUP(id)			do { } while (0)
+
+static inline bool CFS_FAIL_PRECHECK(__u32 id) { return false; }
+
+static unsigned long __maybe_unused cfs_fail_loc;
+static unsigned int __maybe_unused cfs_fail_val;
+static int __maybe_unused cfs_fail_err;
+static int __maybe_unused cfs_race_state;
+static DECLARE_WAIT_QUEUE_HEAD(cfs_race_waitq);
+
+#endif /* CDEBUG_ENABLED */
 
 #endif /* _LIBCFS_FAIL_H */

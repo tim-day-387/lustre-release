@@ -47,10 +47,6 @@
 
 typedef s32 timeout_t;
 
-int libcfs_setup(void);
-int debug_module_init(void);
-void debug_module_exit(void);
-
 #ifdef HAVE_CONST_CTR_TABLE
 #define DEFINE_CTL_TABLE_INIT(__name, init)\
 	const struct ctl_table *__name = init
@@ -63,6 +59,12 @@ typedef int (*cfs_ctl_table_handler_t)(struct ctl_table *,
 #define cfs_proc_handler(h)	((cfs_ctl_table_handler_t)(h))
 #endif
 
+#ifdef CDEBUG_ENABLED
+
+int libcfs_setup(void);
+int debug_module_init(void);
+void debug_module_exit(void);
+
 void lnet_insert_debugfs(const struct ctl_table *table,
 			 struct module *mod, void **statep);
 void lnet_remove_debugfs(const struct ctl_table *table);
@@ -71,6 +73,26 @@ void lnet_debugfs_fini(void **statep);
 /* helper for sysctl handlers */
 int debugfs_doint(const struct ctl_table *table, int write,
 		  void __user *buffer, size_t *lenp, loff_t *ppos);
+
+#else /* !CDEBUG_ENABLED */
+
+static inline int libcfs_setup(void) { return 0; }
+static inline int debug_module_init(void) { return 0; }
+static inline void debug_module_exit(void) { }
+
+static inline void lnet_insert_debugfs(const struct ctl_table *table,
+				       struct module *mod, void **statep) { }
+static inline void lnet_remove_debugfs(const struct ctl_table *table) { }
+static inline void lnet_debugfs_fini(void **statep) { }
+
+static inline int debugfs_doint(const struct ctl_table *table, int write,
+				void __user *buffer, size_t *lenp,
+				loff_t *ppos)
+{
+	return -ENOSYS;
+}
+
+#endif /* CDEBUG_ENABLED */
 
 /*
  * Memory
