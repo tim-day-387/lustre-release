@@ -269,6 +269,12 @@ static int mgs_check_target(const struct lu_env *env,
 
 	ENTRY;
 
+	/* Assuming we have only loopback, give up here */
+	if (mti->mti_nid_count == 1) {
+		mti->mti_flags |= LDD_F_WRITECONF;
+		RETURN(1);
+	}
+
 	rc = mgs_check_index(env, mgs, mti);
 	if (rc == 0) {
 		LCONSOLE_ERROR("%s claims to have registered, but this MGS does not know about it, preventing registration.\n",

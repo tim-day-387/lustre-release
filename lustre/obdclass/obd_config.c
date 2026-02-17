@@ -2079,6 +2079,47 @@ int class_config_llog_handler(const struct lu_env *env,
 
 		lcfg_new->lcfg_nal = 0; /* illegal value for obsolete field */
 
+		/*
+		 * Rewrite ADD_UUID commands to use loopback NID when
+		 * network restriction is set (e.g., network=lo for
+		 * lustreroot). This ensures all server-to-server
+		 * connections use loopback regardless of NIDs stored
+		 * in the llog from the original filesystem creation.
+		 */
+		if (cfg && cfg->cfg_sb && lcfg_new->lcfg_command == LCFG_ADD_UUID) {
+			struct lustre_sb_info *lsi = s2lsi(cfg->cfg_sb);
+			char *nidnet = lsi->lsi_lmd->lmd_nidnet;
+
+			if (nidnet) {
+				struct lnet_nid nid;
+				__u32 refnet = libcfs_str2net(nidnet);
+
+				if (lcfg_new->lcfg_nid)
+					lnet_nid4_to_nid(lcfg_new->lcfg_nid, &nid);
+				else {
+					char *nidstr = lustre_cfg_string(lcfg_new, 2);
+
+					if (nidstr)
+						libcfs_strnid(&nid, nidstr);
+					else
+						lnet_nid4_to_nid(LNET_NID_ANY, &nid);
+				}
+
+				if (refnet != LNET_NET_ANY &&
+				    LNET_NID_NET(&nid) != refnet) {
+					CDEBUG(D_CONFIG,
+					       "Rewriting ADD_UUID NID from %s to loopback for %s\n",
+					       libcfs_nidstr(&nid), nidnet);
+					/*
+					 * Replace the NID with loopback NID.
+					 * This allows server-to-server connections
+					 * to work when restricted to loopback.
+					 */
+					lcfg_new->lcfg_nid = LNET_NID_LO_0;
+				}
+			}
+		}
+
 		rc = class_process_config(lcfg_new, cfg->cfg_kobj);
 		if (rc && lcfg_new->lcfg_command == LCFG_SETUP) {
 			lcfg_new->lcfg_command = LCFG_DETACH;

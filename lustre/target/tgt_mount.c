@@ -1203,9 +1203,6 @@ static int server_nid2radix(void *data, struct lnet_nid *nid)
 	struct nid_fetch_data *nfd = data;
 	struct lnet_nid *tmp;
 
-	if (nid_is_lo0(nid))
-		return 0;
-
 	if (nfd->nfd_lmd &&
 	    test_bit(LMD_FLG_NO_PRIMNODE, nfd->nfd_lmd->lmd_flags) &&
 	    class_match_nid(nfd->nfd_lmd->lmd_params, PARAM_FAILNODE, nid) < 1)
