@@ -20,8 +20,16 @@ new_headers :=
 ldiskfs_patched_sources := $(notdir $(backfs_sources) $(backfs_headers)) $(new_sources) $(new_headers)
 ldiskfs_sources := $(ldiskfs_patched_sources)
 
+ifeq ($(PATCHLEVEL),)
+
+-include autoMakefile
+
+else
+
 ldiskfs-objs := $(filter %.o,$(ldiskfs_sources:.c=.o))
 
-EXTRA_PRE_CFLAGS := -I@LINUX@/fs -I@abs_top_srcdir@/ldiskfs
+ccflags-y += -I@LINUX@/fs -I@abs_top_srcdir@/ldiskfs
 
-@INCLUDE_RULES@
+obj-m += ldiskfs.o
+
+endif
