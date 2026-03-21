@@ -1276,7 +1276,7 @@ int gss_alloc_reqbuf_intg(struct ptlrpc_sec *sec, struct ptlrpc_request *req,
 
 	/* pack user desc here, later we might leave current user's process */
 	if (req->rq_pack_udesc)
-		sptlrpc_pack_user_desc(req->rq_reqbuf, 2);
+		sptlrpc_pack_user_desc(req->rq_reqbuf, 2, req->rq_idmap);
 
 	RETURN(0);
 }
@@ -1352,7 +1352,7 @@ int gss_alloc_reqbuf_priv(struct ptlrpc_sec *sec, struct ptlrpc_request *req,
 	req->rq_reqmsg = lustre_msg_buf(req->rq_clrbuf, 0, msgsize);
 
 	if (req->rq_pack_udesc)
-		sptlrpc_pack_user_desc(req->rq_clrbuf, 1);
+		sptlrpc_pack_user_desc(req->rq_clrbuf, 1, req->rq_idmap);
 
 	RETURN(0);
 }

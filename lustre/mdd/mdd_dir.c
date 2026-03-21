@@ -538,7 +538,7 @@ int mdd_may_delete(const struct lu_env *env, struct mdd_object *tpobj,
 	if (mdd_is_dead_obj(tobj))
 		RETURN(-ESTALE);
 
-	if (mdd_is_sticky(env, tpobj, tpattr, tobj, tattr))
+	if (check_perm && mdd_is_sticky(env, tpobj, tpattr, tobj, tattr))
 		RETURN(-EPERM);
 
 	if (tattr->la_flags & (LUSTRE_APPEND_FL | LUSTRE_IMMUTABLE_FL))
@@ -2031,13 +2031,14 @@ int mdd_finish_unlink(const struct lu_env *env,
 int mdd_unlink_sanity_check(const struct lu_env *env, struct mdd_object *pobj,
 			    const struct lu_attr *pattr,
 			    struct mdd_object *cobj,
-			    const struct lu_attr *cattr)
+			    const struct lu_attr *cattr,
+			    int check_perm)
 {
 	int rc;
 
 	ENTRY;
 
-	rc = mdd_may_delete(env, pobj, pattr, cobj, cattr, NULL, 1, 1);
+	rc = mdd_may_delete(env, pobj, pattr, cobj, cattr, NULL, check_perm, 1);
 
 	RETURN(rc);
 }
@@ -2189,7 +2190,8 @@ static int mdd_unlink(const struct lu_env *env, struct md_object *pobj,
 			cl_flags |= CLF_UNLINK_HSM_EXISTS;
 	}
 
-	rc = mdd_unlink_sanity_check(env, mdd_pobj, pattr, mdd_cobj, cattr);
+	rc = mdd_unlink_sanity_check(env, mdd_pobj, pattr, mdd_cobj, cattr,
+				     !(ma->ma_attr_flags & MDS_USERNS_BYPASS));
 	if (rc)
 		RETURN(rc);
 
@@ -2492,7 +2494,8 @@ static int mdd_create_sanity_check(const struct lu_env *env,
 				   const struct lu_attr *pattr,
 				   const struct lu_name *lname,
 				   struct lu_attr *cattr,
-				   struct md_op_spec *spec)
+				   struct md_op_spec *spec,
+				   struct md_attr *ma)
 {
 	struct mdd_thread_info *info = mdd_env_info(env);
 	struct lu_fid *fid = &info->mdi_fid;
@@ -2526,6 +2529,10 @@ static int mdd_create_sanity_check(const struct lu_env *env,
 		/* Permission is already being checked in mdd_lookup */
 		check_perm = false;
 	}
+
+	/* VFS pre-approved this create in a user namespace context */
+	if (ma->ma_attr_flags & MDS_USERNS_BYPASS)
+		check_perm = false;
 
 	if (S_ISDIR(cattr->la_mode) &&
 	    unlikely(spec != NULL && spec->sp_cr_flags & MDS_OPEN_HAS_EA) &&
@@ -3117,7 +3124,7 @@ int mdd_create(const struct lu_env *env, struct md_object *pobj,
 		RETURN(rc);
 
 	/* Sanity checks before big job. */
-	rc = mdd_create_sanity_check(env, pobj, pattr, lname, attr, spec);
+	rc = mdd_create_sanity_check(env, pobj, pattr, lname, attr, spec, ma);
 	if (unlikely(rc == -EEXIST && S_ISDIR(attr->la_mode) &&
 		     spec->sp_replay && mdd_object_remote(mdd_pobj)))
 		/* if it's replay by client request, and name is found in

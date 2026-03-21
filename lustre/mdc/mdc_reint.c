@@ -118,6 +118,7 @@ int mdc_setattr(struct obd_export *exp, struct md_op_data *op_data,
 		RETURN(rc);
 	}
 
+	req->rq_idmap = op_data->op_idmap;
 	if (op_data->op_attr.ia_valid & (ATTR_MTIME | ATTR_CTIME))
 		CDEBUG(D_INODE, "setting mtime %lld, ctime %lld\n",
 		       (s64)op_data->op_attr.ia_mtime.tv_sec,
@@ -209,6 +210,7 @@ rebuild:
 	 * mdc_create_pack() fills msg->bufs[1] with name and msg->bufs[2] with
 	 * tgt, for symlinks or lov MD data.
 	 */
+	req->rq_idmap = op_data->op_idmap;
 	mdc_create_pack(&req->rq_pill, op_data, data, datalen, mode, uid,
 			gid, cap_effective, rdev, sepol);
 
@@ -351,6 +353,7 @@ int mdc_unlink(struct obd_export *exp, struct md_op_data *op_data,
 	if (rc)
 		GOTO(err_put_sepol, rc);
 
+	req->rq_idmap = op_data->op_idmap;
 	mdc_unlink_pack(&req->rq_pill, op_data, sepol);
 	sptlrpc_sepol_put(sepol);
 
@@ -415,6 +418,7 @@ int mdc_link(struct obd_export *exp, struct md_op_data *op_data,
 	if (rc)
 		GOTO(err_put_sepol, rc);
 
+	req->rq_idmap = op_data->op_idmap;
 	mdc_link_pack(&req->rq_pill, op_data, sepol);
 	sptlrpc_sepol_put(sepol);
 
@@ -493,6 +497,7 @@ int mdc_rename(struct obd_export *exp, struct md_op_data *op_data,
 	if (rc)
 		GOTO(err_put_sepol, rc);
 
+	req->rq_idmap = op_data->op_idmap;
 	if (op_data->op_cli_flags & CLI_MIGRATE)
 		mdc_migrate_pack(&req->rq_pill, op_data, old, oldlen);
 	else
@@ -556,11 +561,12 @@ int mdc_file_resync(struct obd_export *exp, struct md_op_data *op_data)
 		RETURN(rc);
 	}
 
+	req->rq_idmap = op_data->op_idmap;
 	BUILD_BUG_ON(sizeof(*rec) != sizeof(struct mdt_rec_reint));
 	rec = req_capsule_client_get(&req->rq_pill, &RMF_REC_REINT);
 	rec->rs_opcode	= REINT_RESYNC;
-	rec->rs_fsuid	= op_data->op_fsuid;
-	rec->rs_fsgid	= op_data->op_fsgid;
+	rec->rs_fsuid	= lustre_current_fsuid(op_data->op_idmap);
+	rec->rs_fsgid	= lustre_current_fsgid(op_data->op_idmap);
 	rec->rs_cap	= ll_capability_u32(op_data->op_cap);
 	rec->rs_fid	= op_data->op_fid1;
 	rec->rs_bias	= op_data->op_bias;

@@ -253,6 +253,8 @@ void lustre_assert_wire_constants(void)
 		 "found 0x%.16llxULL\n", (long long)MDS_ATTR_LSIZE);
 	LASSERTF(MDS_ATTR_LBLOCKS == 0x0000000000040000ULL,
 		 "found 0x%.16llxULL\n", (long long)MDS_ATTR_LBLOCKS);
+	LASSERTF(MDS_ATTR_USERNS_BYPASS == 0x0000000000080000ULL,
+		 "found 0x%.16llxULL\n", (long long)MDS_ATTR_USERNS_BYPASS);
 	LASSERTF(MDS_ATTR_OVERRIDE == 0x0000000002000000ULL,
 		 "found 0x%.16llxULL\n", (long long)MDS_ATTR_OVERRIDE);
 	LASSERTF(FLD_QUERY == 900, "found %lld\n",
@@ -2592,6 +2594,8 @@ void lustre_assert_wire_constants(void)
 		 (unsigned)MDS_RENAME_AGAIN);
 	LASSERTF(MDS_NAMEHASH == 0x08000000UL, "found 0x%.8xUL\n",
 		 (unsigned)MDS_NAMEHASH);
+	LASSERTF(MDS_USERNS_BYPASS == 0x10000000UL, "found 0x%.8xUL\n",
+		 (unsigned)MDS_USERNS_BYPASS);
 
 	/* Checks for struct mdt_body */
 	LASSERTF((int)sizeof(struct mdt_body) == 216, "found %lld\n",

@@ -1360,7 +1360,8 @@ extern void ll_rw_stats_tally(struct ll_sb_info *sbi, pid_t pid,
 			      size_t count, int rw);
 int ll_getattr(struct mnt_idmap *, const struct path *path,
 	       struct kstat *stat, u32 request_mask, unsigned int flags);
-int ll_getattr_dentry(struct dentry *de, struct kstat *stat, u32 request_mask,
+int ll_getattr_dentry(struct mnt_idmap *map, struct dentry *de,
+		      struct kstat *stat, u32 request_mask,
 		      unsigned int flags, bool foreign);
 #ifdef CONFIG_LUSTRE_FS_POSIX_ACL
 struct posix_acl *ll_get_acl(
@@ -1468,8 +1469,8 @@ void ll_dir_clear_lsm_md(struct inode *inode);
 void ll_clear_inode(struct inode *inode);
 int volatile_ref_file(const char *volatile_name, int volatile_len,
 		      struct file **ref_file);
-int ll_setattr_raw(struct dentry *dentry, struct iattr *attr,
-		   enum op_xvalid xvalid, bool hsm_import);
+int ll_setattr_raw(struct mnt_idmap *map, struct dentry *dentry,
+		   struct iattr *attr, enum op_xvalid xvalid, bool hsm_import);
 int ll_setattr(struct mnt_idmap *map, struct dentry *de, struct iattr *attr);
 int ll_statfs(struct dentry *de, struct kstatfs *sfs);
 int ll_statfs_internal(struct ll_sb_info *sbi, struct obd_statfs *osfs,
@@ -1731,7 +1732,7 @@ extern const struct xattr_handler *ll_xattr_handlers[];
 
 ssize_t ll_listxattr(struct dentry *dentry, char *buffer, size_t size);
 int ll_xattr_list(struct inode *inode, const char *name, int type,
-		  void *buffer, size_t size, u64 valid);
+		  void *buffer, size_t size, u64 valid, struct mnt_idmap *idmap);
 const struct xattr_handler *get_xattr_type(const char *name);
 
 /* Common IO arguments for various VFS I/O interfaces. */

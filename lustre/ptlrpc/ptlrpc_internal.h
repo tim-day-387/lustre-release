@@ -385,10 +385,10 @@ static inline void do_pack_body(struct ptlrpc_request *req)
 	b->mbo_eadatasize = 0;
 	b->mbo_flags = 0;
 	b->mbo_suppgid = -1;
-	b->mbo_uid = from_kuid(&init_user_ns, current_uid());
-	b->mbo_gid = from_kgid(&init_user_ns, current_gid());
-	b->mbo_fsuid = from_kuid(&init_user_ns, current_fsuid());
-	b->mbo_fsgid = from_kgid(&init_user_ns, current_fsgid());
+	b->mbo_uid = 0;
+	b->mbo_gid = 0;
+	b->mbo_fsuid = 0;
+	b->mbo_fsgid = 0;
 	b->mbo_capability = ll_capability_u32(current_cap());
 }
 

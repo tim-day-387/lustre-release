@@ -563,7 +563,8 @@ int plain_alloc_reqbuf(struct ptlrpc_sec *sec,
 	req->rq_reqmsg = lustre_msg_buf(req->rq_reqbuf, PLAIN_PACK_MSG_OFF, 0);
 
 	if (req->rq_pack_udesc)
-		sptlrpc_pack_user_desc(req->rq_reqbuf, PLAIN_PACK_USER_OFF);
+		sptlrpc_pack_user_desc(req->rq_reqbuf, PLAIN_PACK_USER_OFF,
+				       req->rq_idmap);
 
 	RETURN(0);
 }

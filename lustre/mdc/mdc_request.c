@@ -101,7 +101,8 @@ static int mdc_get_root(struct obd_export *exp, const char *fileset,
 		ptlrpc_request_free(req);
 		RETURN(rc);
 	}
-	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID);
+	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID,
+		      NULL);
 	if (fileset != NULL) {
 		char *name = req_capsule_client_get(&req->rq_pill, &RMF_NAME);
 
@@ -237,7 +238,8 @@ static int mdc_getattr(struct obd_export *exp, struct md_op_data *op_data,
 
 again:
 	mdc_pack_body(&req->rq_pill, &op_data->op_fid1, op_data->op_valid,
-		      op_data->op_mode, -1, 0, op_data->op_projid);
+		      op_data->op_mode, -1, 0, op_data->op_projid,
+		      op_data->op_idmap);
 	req_capsule_set_size(&req->rq_pill, &RMF_ACL, RCL_SERVER, acl_bufsize);
 	req_capsule_set_size(&req->rq_pill, &RMF_MDT_MD, RCL_SERVER,
 			     op_data->op_mode);
@@ -302,7 +304,7 @@ static int mdc_getattr_name(struct obd_export *exp, struct md_op_data *op_data,
 again:
 	mdc_pack_body(&req->rq_pill, &op_data->op_fid1, op_data->op_valid,
 		      op_data->op_mode, op_data->op_suppgids[0], 0,
-		      op_data->op_projid);
+		      op_data->op_projid, op_data->op_idmap);
 	req_capsule_set_size(&req->rq_pill, &RMF_MDT_MD, RCL_SERVER,
 			     op_data->op_mode);
 	req_capsule_set_size(&req->rq_pill, &RMF_ACL, RCL_SERVER, acl_bufsize);
@@ -342,7 +344,7 @@ int mdc_xattr_common(struct obd_export *exp, const struct req_format *fmt,
 			    const struct lu_fid *fid, int opcode, u64 valid,
 			    const char *xattr_name, const char *input,
 			    int input_size, int output_size, int flags,
-			    __u32 suppgid, __u32 projid,
+			    __u32 suppgid, __u32 projid, struct mnt_idmap *idmap,
 			    struct ptlrpc_request **request)
 {
 	struct ptlrpc_request *req;
@@ -404,10 +406,11 @@ int mdc_xattr_common(struct obd_export *exp, const struct req_format *fmt,
 
 		BUILD_BUG_ON(sizeof(struct mdt_rec_setxattr) !=
 			     sizeof(struct mdt_rec_reint));
+		req->rq_idmap = idmap;
 		rec = req_capsule_client_get(&req->rq_pill, &RMF_REC_REINT);
 		rec->sx_opcode = REINT_SETXATTR;
-		rec->sx_fsuid  = from_kuid(&init_user_ns, current_fsuid());
-		rec->sx_fsgid  = from_kgid(&init_user_ns, current_fsgid());
+		rec->sx_fsuid  = lustre_current_fsuid(idmap);
+		rec->sx_fsgid  = lustre_current_fsgid(idmap);
 		rec->sx_cap = ll_capability_u32(current_cap());
 		rec->sx_suppgid1 = suppgid;
 		rec->sx_suppgid2 = -1;
@@ -416,10 +419,12 @@ int mdc_xattr_common(struct obd_export *exp, const struct req_format *fmt,
 		rec->sx_time   = ktime_get_real_seconds();
 		rec->sx_size   = output_size;
 		rec->sx_flags  = flags;
+		if (idmap && idmap != &nop_mnt_idmap)
+			rec->sx_flags |= XATTR_LUSTRE_USERNS;
 		lustre_msg_set_projid(req->rq_reqmsg, projid);
 	} else {
 		mdc_pack_body(&req->rq_pill, fid, valid, output_size,
-			      suppgid, flags, projid);
+			      suppgid, flags, projid, idmap);
 		/* Avoid deadlock with modifying RPCs on MDS_REQUEST_PORTAL.
 		 * See LU-15245.
 		 */
@@ -469,7 +474,8 @@ err_free_rq:
 static int mdc_setxattr(struct obd_export *exp, const struct lu_fid *fid,
 			u64 obd_md_valid, const char *name, const void *value,
 			size_t value_size, unsigned int xattr_flags,
-			u32 suppgid, u32 projid, struct ptlrpc_request **req)
+			u32 suppgid, u32 projid, struct mnt_idmap *idmap,
+			struct ptlrpc_request **req)
 {
 	LASSERT(obd_md_valid == OBD_MD_FLXATTR ||
 		obd_md_valid == OBD_MD_FLXATTRRM);
@@ -477,12 +483,13 @@ static int mdc_setxattr(struct obd_export *exp, const struct lu_fid *fid,
 	return mdc_xattr_common(exp, &RQF_MDS_REINT_SETXATTR,
 				fid, MDS_REINT, obd_md_valid, name,
 				value, value_size, 0, xattr_flags, suppgid,
-				projid, req);
+				projid, idmap, req);
 }
 
 static int mdc_getxattr(struct obd_export *exp, const struct lu_fid *fid,
 			u64 obd_md_valid, const char *name, size_t buf_size,
-			u32 projid, struct ptlrpc_request **req)
+			u32 projid, struct mnt_idmap *idmap,
+			struct ptlrpc_request **req)
 {
 	struct mdt_body *body;
 	int rc;
@@ -497,7 +504,7 @@ static int mdc_getxattr(struct obd_export *exp, const struct lu_fid *fid,
 	       exp->exp_obd->obd_name, name, PFID(fid));
 	rc = mdc_xattr_common(exp, &RQF_MDS_GETXATTR, fid, MDS_GETXATTR,
 			      obd_md_valid, name, NULL, 0, buf_size, 0, -1,
-			      projid, req);
+			      projid, idmap, req);
 	if (rc < 0)
 		GOTO(out, rc);
 
@@ -1025,7 +1032,8 @@ out:
 
 static int mdc_getpage(struct obd_export *exp, const struct lu_fid *fid,
 		       u64 offset, struct page **pages, int npages,
-		       __u32 projid, struct ptlrpc_request **request)
+		       __u32 projid, struct mnt_idmap *idmap,
+		       struct ptlrpc_request **request)
 {
 	struct ptlrpc_request   *req;
 	struct ptlrpc_bulk_desc *desc;
@@ -1064,7 +1072,7 @@ restart_bulk:
 		desc->bd_frag_ops->add_kiov_frag(desc, pages[i], 0,
 						 PAGE_SIZE);
 
-	mdc_readdir_pack(&req->rq_pill, offset, PAGE_SIZE * npages, fid);
+	mdc_readdir_pack(&req->rq_pill, offset, PAGE_SIZE * npages, fid, idmap);
 
 	ptlrpc_request_set_replen(req);
 	rc = ptlrpc_queue_wait(req);
@@ -1409,7 +1417,7 @@ static int ll_mdc_read_page_remote(void *data, struct page *page0)
 	}
 
 	rc = mdc_getpage(rp->rp_exp, fid, rp->rp_off, page_pool, npages,
-			 op_data->op_projid, &req);
+			 op_data->op_projid, op_data->op_idmap, &req);
 	if (rc < 0) {
 		/* page0 is special, which was added into page cache early */
 		cfs_delete_from_page_cache(page0);
@@ -1776,7 +1784,8 @@ static int mdc_ioc_hsm_progress(struct obd_export *exp,
 	if (IS_ERR(req))
 		RETURN(PTR_ERR(req));
 
-	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID);
+	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID,
+		      NULL);
 
 	/* Copy hsm_progress struct */
 	req_hpk = req_capsule_client_get(&req->rq_pill, &RMF_MDS_HSM_PROGRESS);
@@ -1834,7 +1843,8 @@ static int mdc_ioc_hsm_ct_register(struct obd_import *imp, __u32 archive_count,
 		RETURN(-ENOMEM);
 	}
 
-	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID);
+	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID,
+		      NULL);
 
 	archive_array = req_capsule_client_get(&req->rq_pill,
 					       &RMF_MDS_HSM_ARCHIVE);
@@ -1876,7 +1886,8 @@ static int mdc_ioc_hsm_current_action(struct obd_export *exp,
 	}
 
 	mdc_pack_body(&req->rq_pill, &op_data->op_fid1, 0, 0,
-		      op_data->op_suppgids[0], 0, op_data->op_projid);
+		      op_data->op_suppgids[0], 0, op_data->op_projid,
+		      op_data->op_idmap);
 
 	ptlrpc_request_set_replen(req);
 
@@ -1909,7 +1920,8 @@ static int mdc_ioc_hsm_ct_unregister(struct obd_import *imp)
 	if (IS_ERR(req))
 		RETURN(PTR_ERR(req));
 
-	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID);
+	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID,
+		      NULL);
 
 	ptlrpc_request_set_replen(req);
 
@@ -1941,7 +1953,8 @@ static int mdc_ioc_hsm_state_get(struct obd_export *exp,
 	}
 
 	mdc_pack_body(&req->rq_pill, &op_data->op_fid1, 0, 0,
-		      op_data->op_suppgids[0], 0, op_data->op_projid);
+		      op_data->op_suppgids[0], 0, op_data->op_projid,
+		      op_data->op_idmap);
 
 	ptlrpc_request_set_replen(req);
 
@@ -1982,7 +1995,8 @@ static int mdc_ioc_hsm_state_set(struct obd_export *exp,
 	}
 
 	mdc_pack_body(&req->rq_pill, &op_data->op_fid1, 0, 0,
-		      op_data->op_suppgids[0], 0, op_data->op_projid);
+		      op_data->op_suppgids[0], 0, op_data->op_projid,
+		      op_data->op_idmap);
 
 	/* Copy states */
 	req_hss = req_capsule_client_get(&req->rq_pill, &RMF_HSM_STATE_SET);
@@ -2060,7 +2074,8 @@ static int mdc_ioc_hsm_request(struct obd_export *exp,
 	/* Cancel existing locks */
 	count = mdc_hsm_request_lock_to_cancel(exp, hur, &cancels);
 	ldlm_cli_cancel_list(&cancels, count, NULL, NULL, 0);
-	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID);
+	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID,
+		      NULL);
 
 	/* Copy hsm_request struct */
 	req_hr = req_capsule_client_get(&req->rq_pill, &RMF_MDS_HSM_REQUEST);
@@ -2114,7 +2129,8 @@ static int mdc_ioc_hsm_data_version(struct obd_export *exp,
 	}
 
 	mdc_pack_body(&req->rq_pill, &op_data->op_fid1, 0, 0,
-		      op_data->op_suppgids[0], 0, op_data->op_projid);
+		      op_data->op_suppgids[0], 0, op_data->op_projid,
+		      op_data->op_idmap);
 
 	b = req_capsule_client_get(&req->rq_pill, &RMF_MDT_BODY);
 	LASSERT(b);
@@ -2774,7 +2790,8 @@ static int mdc_fsync(struct obd_export *exp, const struct lu_fid *fid,
 		RETURN(rc);
 	}
 
-	mdc_pack_body(&req->rq_pill, fid, 0, 0, -1, 0, MDT_INVALID_PROJID);
+	mdc_pack_body(&req->rq_pill, fid, 0, 0, -1, 0, MDT_INVALID_PROJID,
+		      NULL);
 
 	ptlrpc_request_set_replen(req);
 
@@ -2844,7 +2861,8 @@ static int mdc_rmfid(struct obd_export *exp, struct fid_array *fa,
 	tmp = req_capsule_client_get(&req->rq_pill, &RMF_FID_ARRAY);
 	memcpy(tmp, fa->fa_fids, flen);
 
-	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID);
+	mdc_pack_body(&req->rq_pill, NULL, 0, 0, -1, 0, MDT_INVALID_PROJID,
+		      NULL);
 	b = req_capsule_client_get(&req->rq_pill, &RMF_MDT_BODY);
 	b->mbo_ctime = ktime_get_real_seconds();
 

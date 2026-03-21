@@ -2060,6 +2060,7 @@ enum mds_attr_flags {
 	MDS_ATTR_PROJID =	  0x10000ULL, /* = 65536 */
 	MDS_ATTR_LSIZE =	  0x20000ULL, /* = 131072 */
 	MDS_ATTR_LBLOCKS =	  0x40000ULL, /* = 262144 */
+	MDS_ATTR_USERNS_BYPASS = 0x80000ULL, /* = 524288, VFS pre-approved for userns */
 	MDS_ATTR_OVERRIDE =	0x2000000ULL, /* = 33554432 */
 };
 
@@ -2105,6 +2106,8 @@ enum mds_op_bias {
 	/* rename must retry again with target ACLs */
 	MDS_RENAME_AGAIN	= 1 << 26,
 	MDS_NAMEHASH		= 1 << 27,
+	/* operation was pre-approved by client VFS (idmapped mount / userns) */
+	MDS_USERNS_BYPASS	= 1 << 28,
 };
 
 #define MDS_CLOSE_INTENT (MDS_HSM_RELEASE | MDS_CLOSE_LAYOUT_SWAP |         \
@@ -2253,6 +2256,12 @@ struct mdt_rec_setxattr {
 	__u32		sx_padding_10;  /* rr_padding_3 */
 	__u32		sx_padding_11;  /* rr_padding_4 */
 };
+
+/* Lustre-specific setxattr flags (carried in sx_flags alongside XATTR_CREATE
+ * and XATTR_REPLACE).  Values must not collide with the kernel XATTR_*
+ * constants (bits 0-1).
+ */
+#define XATTR_LUSTRE_USERNS	0x10 /* VFS pre-approved for idmapped mount */
 
 /* instance of mdt_reint_rec. FLR: for file resync MDS_REINT_RESYNC RPC. */
 struct mdt_rec_resync {

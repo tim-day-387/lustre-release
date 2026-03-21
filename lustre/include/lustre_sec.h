@@ -1210,7 +1210,8 @@ static inline int sptlrpc_user_desc_size(int ngroups)
 }
 
 int sptlrpc_current_user_desc_size(void);
-int sptlrpc_pack_user_desc(struct lustre_msg *msg, int offset);
+int sptlrpc_pack_user_desc(struct lustre_msg *msg, int offset,
+			   struct mnt_idmap *idmap);
 int sptlrpc_unpack_user_desc(struct lustre_msg *req, int offset, int swabbed);
 
 /** @} sptlrpc */
