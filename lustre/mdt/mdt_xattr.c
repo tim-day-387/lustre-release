@@ -648,6 +648,9 @@ int mdt_reint_setxattr(struct mdt_thread_info *info,
 		if (attr->la_flags & XATTR_CREATE)
 			flags |= LU_XATTR_CREATE;
 
+		if (attr->la_flags & XATTR_LUSTRE_USERNS)
+			flags |= LU_XATTR_USERNS_BYPASS;
+
 		mdt_fail_write(env, info->mti_mdt->mdt_bottom,
 			       OBD_FAIL_MDS_SETXATTR_WRITE);
 

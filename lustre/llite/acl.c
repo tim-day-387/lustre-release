@@ -18,7 +18,8 @@
 #include "llite_internal.h"
 
 static struct posix_acl *
-ll_get_acl_common(struct inode *inode, int type, bool rcu)
+ll_get_acl_common(struct inode *inode, int type, bool rcu,
+		  struct mnt_idmap *idmap)
 {
 	struct ll_inode_info *lli = ll_i2info(inode);
 	struct posix_acl *acl = NULL;
@@ -47,7 +48,7 @@ ll_get_acl_common(struct inode *inode, int type, bool rcu)
 		return ERR_PTR(-EINVAL);
 	}
 
-	len = ll_xattr_list(inode, xname, xtype, NULL, 0, OBD_MD_FLXATTR);
+	len = ll_xattr_list(inode, xname, xtype, NULL, 0, OBD_MD_FLXATTR, idmap);
 	if (len > 0) {
 		if (len > sizeof(buf))
 			value = kmalloc(len, GFP_NOFS);
@@ -56,7 +57,7 @@ ll_get_acl_common(struct inode *inode, int type, bool rcu)
 		if (!value)
 			return ERR_PTR(-ENOMEM);
 		len = ll_xattr_list(inode, xname, xtype, value, len,
-				    OBD_MD_FLXATTR);
+				    OBD_MD_FLXATTR, idmap);
 	}
 	if (len > 0)
 		acl = posix_acl_from_xattr(&init_user_ns, value, len);
@@ -89,7 +90,7 @@ out:
 /* v6.1-rc1-3-gcac2f8b8d8b5 */
 struct posix_acl *ll_get_inode_acl(struct inode *inode, int type, bool rcu)
 {
-	return ll_get_acl_common(inode, type, rcu);
+	return ll_get_acl_common(inode, type, rcu, NULL);
 }
 
 struct posix_acl *ll_get_acl(
@@ -107,8 +108,11 @@ struct posix_acl *ll_get_acl(
 #ifndef HAVE_GET_ACL_RCU_ARG
 	bool rcu = false;
 #endif
+#ifndef HAVE_ACL_WITH_DENTRY
+	struct mnt_idmap *map = NULL;
+#endif
 
-	return ll_get_acl_common(inode, type, rcu);
+	return ll_get_acl_common(inode, type, rcu, map);
 }
 
 int ll_set_acl(struct mnt_idmap *map,
@@ -162,7 +166,7 @@ int ll_set_acl(struct mnt_idmap *map,
 	rc = md_setxattr(sbi->ll_md_exp, ll_inode2fid(inode),
 			 value ? OBD_MD_FLXATTR : OBD_MD_FLXATTRRM,
 			 name, value, value_size, 0, 0, ll_i2projid(inode),
-			 &req);
+			 map, &req);
 
 	if (!rc)
 		ll_i2info(inode)->lli_synced_to_mds = false;

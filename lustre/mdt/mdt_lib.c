@@ -1226,6 +1226,8 @@ static __u64 mdt_attr_valid_xlate(enum mds_attr_flags in,
 		ma->ma_attr_flags |= MDS_OWNEROVERRIDE;
 	if (in & MDS_ATTR_FORCE)
 		ma->ma_attr_flags |= MDS_PERM_BYPASS;
+	if (in & MDS_ATTR_USERNS_BYPASS)
+		ma->ma_attr_flags |= MDS_USERNS_BYPASS;
 
 	in &= ~(MDS_ATTR_MODE | MDS_ATTR_UID | MDS_ATTR_GID | MDS_ATTR_PROJID |
 		MDS_ATTR_ATIME | MDS_ATTR_MTIME | MDS_ATTR_CTIME |
@@ -1233,7 +1235,7 @@ static __u64 mdt_attr_valid_xlate(enum mds_attr_flags in,
 		MDS_ATTR_SIZE | MDS_ATTR_BLOCKS | MDS_ATTR_ATTR_FLAG |
 		MDS_ATTR_FORCE | MDS_ATTR_KILL_SUID | MDS_ATTR_KILL_SGID |
 		MDS_ATTR_FROM_OPEN | MDS_ATTR_LSIZE | MDS_ATTR_LBLOCKS |
-		MDS_ATTR_OVERRIDE);
+		MDS_ATTR_OVERRIDE | MDS_ATTR_USERNS_BYPASS);
 	if (in != 0)
 		CDEBUG(D_INFO, "Unknown attr bits: %#llx\n", (u64)in);
 
@@ -1542,6 +1544,8 @@ static int mdt_create_unpack(struct mdt_thread_info *info)
 		LA_CTIME | LA_MTIME | LA_ATIME;
 	memset(&sp->u, 0, sizeof(sp->u));
 	sp->sp_cr_flags = get_mrc_cr_flags(rec);
+	if (rec->cr_bias & MDS_USERNS_BYPASS)
+		info->mti_attr.ma_attr_flags |= MDS_USERNS_BYPASS;
 
 	rc = mdt_name_unpack(pill, &RMF_NAME, &rr->rr_name, 0);
 	if (rc < 0)
@@ -1699,6 +1703,8 @@ static int mdt_unlink_unpack(struct mdt_thread_info *info)
 		info->mti_spec.sp_cr_flags |= MDS_OP_WITH_FID;
 	else
 		info->mti_spec.sp_cr_flags &= ~MDS_OP_WITH_FID;
+	if (rec->ul_bias & MDS_USERNS_BYPASS)
+		info->mti_attr.ma_attr_flags |= MDS_USERNS_BYPASS;
 
 	rc = mdt_name_unpack(pill, &RMF_NAME, &rr->rr_name, 0);
 	if (rc < 0)
@@ -1932,6 +1938,8 @@ static int mdt_open_unpack(struct mdt_thread_info *info)
 		RETURN(-EPROTO);
 
 	info->mti_cross_ref = !!(rec->cr_bias & MDS_CROSS_REF);
+	if (rec->cr_bias & MDS_USERNS_BYPASS)
+		info->mti_attr.ma_attr_flags |= MDS_USERNS_BYPASS;
 
 	mdt_name_unpack(pill, &RMF_NAME, &rr->rr_name, MNF_FIX_ANON);
 

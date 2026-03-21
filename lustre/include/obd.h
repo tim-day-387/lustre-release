@@ -903,6 +903,8 @@ enum op_xvalid {
 	OP_XVALID_PROJID	= BIT(4),	/* 0x0010 */
 	OP_XVALID_LAZYSIZE	= BIT(5),	/* 0x0020 */
 	OP_XVALID_LAZYBLOCKS	= BIT(6),	/* 0x0040 */
+	/* operation was pre-approved by VFS for idmapped mount / user ns */
+	OP_XVALID_USERNS_BYPASS	= BIT(7),	/* 0x0080 */
 };
 
 struct lu_context;
@@ -987,8 +989,7 @@ struct md_op_data {
 	struct lmv_stripe_object *op_lso2;
 	struct lmv_stripe_object *op_default_lso1; /* default LMV */
 	__u32			op_suppgids[2];
-	__u32			op_fsuid;
-	__u32			op_fsgid;
+	struct mnt_idmap	*op_idmap;
 	kernel_cap_t		op_cap;
 	void			*op_data;
 	size_t			op_data_size;
@@ -1339,11 +1340,13 @@ struct md_ops {
 	int (*m_setxattr)(struct obd_export *exp, const struct lu_fid *fid,
 			  u64 obd_md_valid, const char *name, const void *value,
 			  size_t value_size, unsigned int xattr_flags,
-			  u32 suppgid, u32 projid, struct ptlrpc_request **req);
+			  u32 suppgid, u32 projid, struct mnt_idmap *idmap,
+			  struct ptlrpc_request **req);
 
 	int (*m_getxattr)(struct obd_export *exp, const struct lu_fid *fid,
 			  u64 obd_md_valid, const char *name, size_t buf_size,
-			  u32 projid, struct ptlrpc_request **req);
+			  u32 projid, struct mnt_idmap *idmap,
+			  struct ptlrpc_request **req);
 
 	int (*m_intent_getattr_async)(struct obd_export *exp,
 				      struct md_op_item *item);
@@ -1571,6 +1574,26 @@ static inline struct inode *page2inode(struct page *page)
 	} else {
 		return NULL;
 	}
+}
+
+static inline __u32 lustre_current_fsuid(struct mnt_idmap *idmap)
+{
+	kuid_t kuid = INVALID_UID;
+
+	if (idmap)
+		kuid = mapped_fsuid(idmap, &init_user_ns);
+
+	return from_kuid(&init_user_ns, kuid);
+}
+
+static inline __u32 lustre_current_fsgid(struct mnt_idmap *idmap)
+{
+	kgid_t kgid = INVALID_GID;
+
+	if (idmap)
+		kgid = mapped_fsgid(idmap, &init_user_ns);
+
+	return from_kgid(&init_user_ns, kgid);
 }
 
 #endif /* __OBD_H */

@@ -896,11 +896,13 @@ void *rdpg_page_get(const struct lu_rdpg *rdpg, unsigned int index);
 void rdpg_page_put(const struct lu_rdpg *rdpg, unsigned int index, void *kaddr);
 
 enum lu_xattr_flags {
-	LU_XATTR_REPLACE = BIT(0),
-	LU_XATTR_CREATE  = BIT(1),
-	LU_XATTR_MERGE   = BIT(2),
-	LU_XATTR_SPLIT   = BIT(3),
-	LU_XATTR_PURGE   = BIT(4),
+	LU_XATTR_REPLACE	  = BIT(0),
+	LU_XATTR_CREATE		  = BIT(1),
+	LU_XATTR_MERGE		  = BIT(2),
+	LU_XATTR_SPLIT		  = BIT(3),
+	LU_XATTR_PURGE		  = BIT(4),
+	/* VFS already verified ownership for idmapped mount / user namespace */
+	LU_XATTR_USERNS_BYPASS	  = BIT(5),
 };
 
 /* For lu_context health-checks */

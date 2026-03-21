@@ -1539,7 +1539,8 @@ static int lmv_get_root(struct obd_export *exp, const char *fileset,
 
 static int lmv_getxattr(struct obd_export *exp, const struct lu_fid *fid,
 			u64 obd_md_valid, const char *name, size_t buf_size,
-			u32 projid, struct ptlrpc_request **req)
+			u32 projid, struct mnt_idmap *idmap,
+			struct ptlrpc_request **req)
 {
 	struct obd_device *obd = exp->exp_obd;
 	struct lmv_obd *lmv = &obd->u.lmv;
@@ -1553,7 +1554,7 @@ static int lmv_getxattr(struct obd_export *exp, const struct lu_fid *fid,
 		RETURN(PTR_ERR(tgt));
 
 	rc = md_getxattr(tgt->ltd_exp, fid, obd_md_valid, name, buf_size,
-			 projid, req);
+			 projid, idmap, req);
 
 	RETURN(rc);
 }
@@ -1561,7 +1562,8 @@ static int lmv_getxattr(struct obd_export *exp, const struct lu_fid *fid,
 static int lmv_setxattr(struct obd_export *exp, const struct lu_fid *fid,
 			u64 obd_md_valid, const char *name, const void *value,
 			size_t value_size, unsigned int xattr_flags,
-			u32 suppgid, u32 projid, struct ptlrpc_request **req)
+			u32 suppgid, u32 projid, struct mnt_idmap *idmap,
+			struct ptlrpc_request **req)
 {
 	struct obd_device *obd = exp->exp_obd;
 	struct lmv_obd *lmv = &obd->u.lmv;
@@ -1575,7 +1577,7 @@ static int lmv_setxattr(struct obd_export *exp, const struct lu_fid *fid,
 		RETURN(PTR_ERR(tgt));
 
 	rc = md_setxattr(tgt->ltd_exp, fid, obd_md_valid, name, value,
-			 value_size, xattr_flags, suppgid, projid, req);
+			 value_size, xattr_flags, suppgid, projid, idmap, req);
 
 	RETURN(rc);
 }
@@ -2456,8 +2458,6 @@ static int lmv_link(struct obd_export *exp, struct md_op_data *op_data,
 	       PFID(&op_data->op_fid2), (int)op_data->op_namelen,
 	       op_data->op_name, PFID(&op_data->op_fid1));
 
-	op_data->op_fsuid = from_kuid(&init_user_ns, current_fsuid());
-	op_data->op_fsgid = from_kgid(&init_user_ns, current_fsgid());
 	op_data->op_cap = current_cap();
 
 	tgt = lmv_locate_tgt2(lmv, op_data);
@@ -2545,8 +2545,6 @@ static int lmv_migrate(struct obd_export *exp, struct md_op_data *op_data,
 	CDEBUG(D_INODE, "MIGRATE "DFID"/"DNAME"\n",
 	       PFID(&op_data->op_fid1), encode_fn_dname(namelen, name));
 
-	op_data->op_fsuid = from_kuid(&init_user_ns, current_fsuid());
-	op_data->op_fsgid = from_kgid(&init_user_ns, current_fsgid());
 	op_data->op_cap = current_cap();
 
 	parent_tgt = lmv_fid2tgt(lmv, &op_data->op_fid1);
@@ -2741,8 +2739,6 @@ static int lmv_rename(struct obd_export *exp, struct md_op_data *op_data,
 		RETURN(rc);
 	}
 
-	op_data->op_fsuid = from_kuid(&init_user_ns, current_fsuid());
-	op_data->op_fsgid = from_kgid(&init_user_ns, current_fsgid());
 	op_data->op_cap = current_cap();
 
 	op_data->op_name = new;
@@ -3341,8 +3337,6 @@ static int lmv_unlink(struct obd_export *exp, struct md_op_data *op_data,
 
 	ENTRY;
 
-	op_data->op_fsuid = from_kuid(&init_user_ns, current_fsuid());
-	op_data->op_fsgid = from_kgid(&init_user_ns, current_fsgid());
 	op_data->op_cap = current_cap();
 
 retry:

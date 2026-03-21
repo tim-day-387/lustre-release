@@ -492,9 +492,11 @@ mdc_intent_create_pack(struct obd_export *exp, struct lookup_intent *it,
 	lit->opc = (__u64)it->it_op;
 
 	/* Pack the intent request. */
+	req->rq_idmap = op_data->op_idmap;
 	mdc_create_pack(&req->rq_pill, op_data, op_data->op_data,
 			op_data->op_data_size, it->it_create_mode,
-			op_data->op_fsuid, op_data->op_fsgid,
+			lustre_current_fsuid(op_data->op_idmap),
+			lustre_current_fsgid(op_data->op_idmap),
 			op_data->op_cap, 0, sepol);
 
 	sptlrpc_sepol_put(sepol);
@@ -576,7 +578,8 @@ mdc_intent_getxattr_pack(struct obd_export *exp, struct lookup_intent *it,
 
 	/* pack the intended request */
 	mdc_pack_body(&req->rq_pill, &op_data->op_fid1, op_data->op_valid,
-		      ea_vals_buf_size, -1, 0, op_data->op_projid);
+		      ea_vals_buf_size, -1, 0, op_data->op_projid,
+		      op_data->op_idmap);
 
 	/* get SELinux policy info if any */
 	mdc_file_sepol_pack(&req->rq_pill, sepol);

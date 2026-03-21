@@ -1597,7 +1597,8 @@ void lustre_msg_set_service_timeout(struct lustre_msg *msg,
 	}
 }
 
-void lustre_msg_set_jobinfo(struct lustre_msg *msg, const struct job_info *ji)
+void lustre_msg_set_jobinfo(struct lustre_msg *msg, const struct job_info *ji,
+			    struct mnt_idmap *idmap)
 {
 	switch (msg->lm_magic) {
 	case LUSTRE_MSG_MAGIC_V2: {
@@ -1623,9 +1624,11 @@ void lustre_msg_set_jobinfo(struct lustre_msg *msg, const struct job_info *ji)
 		}
 
 		if (!(pb->pb_flags & MSG_PACK_UID_GID)) {
+			struct mnt_idmap *map = idmap ?: &nop_mnt_idmap;
+
 			pb->pb_flags |= MSG_PACK_UID_GID;
-			pb->pb_uid = from_kuid(&init_user_ns, current_uid());
-			pb->pb_gid = from_kgid(&init_user_ns, current_gid());
+			pb->pb_uid = lustre_current_fsuid(map);
+			pb->pb_gid = lustre_current_fsgid(map);
 		}
 
 		if (pb->pb_jobid[0] == '\0')

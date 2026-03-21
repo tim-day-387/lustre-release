@@ -537,8 +537,8 @@ static int ll_dir_setdirstripe(struct dentry *dparent, struct lmv_user_md *lump,
 		op_data->op_bias |= MDS_SETSTRIPE_CREATE;
 
 	err = md_create(sbi->ll_md_exp, op_data, lump, len, mode,
-			from_kuid(&init_user_ns, current_fsuid()),
-			from_kgid(&init_user_ns, current_fsgid()),
+			from_kuid(&init_user_ns, KUIDT_INIT(0)),
+			from_kgid(&init_user_ns, KGIDT_INIT(0)),
 			current_cap(), 0, &request);
 	if (err)
 		GOTO(out_request, err);

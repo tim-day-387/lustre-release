@@ -1288,7 +1288,7 @@ void ptlrpc_set_add_req(struct ptlrpc_request_set *set,
 	req->rq_queued_time_ns = ktime_get_real();
 
 	if (req->rq_reqmsg)
-		lustre_msg_set_jobinfo(req->rq_reqmsg, NULL);
+		lustre_msg_set_jobinfo(req->rq_reqmsg, NULL, req->rq_idmap);
 
 	if (set->set_producer)
 		/*

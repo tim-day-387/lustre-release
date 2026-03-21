@@ -274,7 +274,7 @@ static struct file_system_type lustre_fs_type = {
 	.name			= "lustre",
 	.init_fs_context	= lustre_init_fs_context,
 	.kill_sb		= lustre_kill_super,
-	.fs_flags		= FS_RENAME_DOES_D_MOVE,
+	.fs_flags		= FS_RENAME_DOES_D_MOVE | FS_ALLOW_IDMAP,
 };
 MODULE_ALIAS_FS("lustre");
 

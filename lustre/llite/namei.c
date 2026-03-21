@@ -1043,7 +1043,8 @@ static void obf_mod_fixup(struct md_op_data *op_data, struct lookup_intent *it)
 static struct dentry *ll_lookup_it(struct inode *parent, struct dentry *dentry,
 				   struct lookup_intent *it,
 				   struct pcc_create_attach *pca,
-				   unsigned int open_flags)
+				   unsigned int open_flags,
+				   struct mnt_idmap *map)
 {
 	ktime_t kstart = ktime_get();
 	struct lookup_intent lookup_it = { .it_op = IT_LOOKUP };
@@ -1097,6 +1098,7 @@ static struct dentry *ll_lookup_it(struct inode *parent, struct dentry *dentry,
 		llcrypt_free_filename(&fname);
 		RETURN(ERR_CAST(op_data));
 	}
+	op_data->op_idmap = map;
 	if (!fid_is_zero(&fid)) {
 		op_data->op_fid2 = fid;
 		op_data->op_bias = MDS_FID_OP | MDS_NAMEHASH;
@@ -1339,7 +1341,8 @@ static struct dentry *ll_lookup_nd(struct inode *parent, struct dentry *dentry,
 		itp = NULL;
 	else
 		itp = &it;
-	de = ll_lookup_it(parent, dentry, itp, NULL, 0);
+	de = ll_lookup_it(parent, dentry, itp, NULL, 0,
+			  mnt_idmap(ll_i2sbi(parent)->ll_mnt.mnt));
 
 	if (itp != NULL)
 		ll_intent_release(itp);
@@ -1467,7 +1470,8 @@ static int ll_atomic_open(struct inode *dir, struct dentry *dentry,
 		it->it_open_flags |= MDS_OPEN_LOCK;
 
 	/* Dentry added to dcache tree in ll_lookup_it */
-	de = ll_lookup_it(dir, dentry, it, &pca, open_flags);
+	de = ll_lookup_it(dir, dentry, it, &pca, open_flags,
+			  file_mnt_idmap(file));
 	if (IS_ERR(de))
 		rc = PTR_ERR(de);
 	else if (de != NULL)
@@ -1932,8 +1936,9 @@ static int ll_new_node_finish(struct inode *dir, struct dentry *dchild,
 	RETURN(err);
 }
 
-static int ll_new_node(struct inode *dir, struct dentry *dchild,
-		       const char *tgt, umode_t mode, __u64 rdev, __u32 opc)
+static int ll_new_node(struct mnt_idmap *map, struct inode *dir,
+		       struct dentry *dchild, const char *tgt, umode_t mode,
+		       __u64 rdev, __u32 opc)
 {
 	struct ptlrpc_request *request = NULL;
 	struct md_op_data *op_data = NULL;
@@ -1963,8 +1968,8 @@ again:
 		GOTO(err_exit, err);
 
 	err = md_create(sbi->ll_md_exp, op_data, data, datalen, mode,
-			from_kuid(&init_user_ns, current_fsuid()),
-			from_kgid(&init_user_ns, current_fsgid()),
+			lustre_current_fsuid(map),
+			lustre_current_fsgid(map),
 			current_cap(), rdev, &request);
 #if LUSTRE_VERSION_CODE < OBD_OCD_VERSION(2, 17, 58, 0)
 	/*
@@ -2076,8 +2081,8 @@ static int ll_mknod(struct mnt_idmap *map, struct inode *dir,
 	case S_IFBLK:
 	case S_IFIFO:
 	case S_IFSOCK:
-		err = ll_new_node(dir, dchild, NULL, mode, old_encode_dev(rdev),
-				  LUSTRE_OPC_MKNOD);
+		err = ll_new_node(map, dir, dchild, NULL, mode,
+				  old_encode_dev(rdev), LUSTRE_OPC_MKNOD);
 		break;
 	case S_IFDIR:
 		err = -EPERM;
@@ -2143,7 +2148,7 @@ static int ll_symlink(struct mnt_idmap *map, struct inode *dir,
 	if (err)
 		GOTO(out, err);
 
-	err = ll_new_node(dir, dchild, oldpath, S_IFLNK | 0777,
+	err = ll_new_node(map, dir, dchild, oldpath, S_IFLNK | 0777,
 			  (__u64)&disk_link, LUSTRE_OPC_SYMLINK);
 
 	if (disk_link.name != (unsigned char *)oldpath)
@@ -2199,8 +2204,8 @@ out:
 	RETURN(err);
 }
 
-static inline int do_mkdir(struct inode *dir, struct dentry *dchild,
-			   umode_t mode)
+static inline int do_mkdir(struct mnt_idmap *map, struct inode *dir,
+			   struct dentry *dchild, umode_t mode)
 {
 	struct lookup_intent mkdir_it = { .it_op = IT_CREAT };
 	struct ll_sb_info *sbi = ll_i2sbi(dir);
@@ -2224,7 +2229,8 @@ static inline int do_mkdir(struct inode *dir, struct dentry *dchild,
 
 	mode = (mode & (S_IRWXUGO | S_ISVTX)) | S_IFDIR;
 	if (!sbi->ll_intent_mkdir_enabled) {
-		rc = ll_new_node(dir, dchild, NULL, mode, 0, LUSTRE_OPC_MKDIR);
+		rc = ll_new_node(map, dir, dchild, NULL, mode, 0,
+				 LUSTRE_OPC_MKDIR);
 		GOTO(out_tally, rc);
 	}
 
@@ -2233,6 +2239,8 @@ static inline int do_mkdir(struct inode *dir, struct dentry *dchild,
 				 NULL, &op_data, &lum, &data, &datalen, NULL);
 	if (rc)
 		GOTO(out_tally, rc);
+
+	op_data->op_idmap = map;
 
 	op_data->op_data = data;
 	op_data->op_data_size = datalen;
@@ -2276,7 +2284,7 @@ out_tally:
 static struct dentry *ll_mkdir(struct mnt_idmap *map, struct inode *dir,
 			       struct dentry *dchild, umode_t mode)
 {
-	int rc = do_mkdir(dir, dchild, mode);
+	int rc = do_mkdir(map, dir, dchild, mode);
 
 	if (rc)
 		return ERR_PTR(rc);
@@ -2286,12 +2294,12 @@ static struct dentry *ll_mkdir(struct mnt_idmap *map, struct inode *dir,
 static int ll_mkdir(struct mnt_idmap *map, struct inode *dir,
 		    struct dentry *dchild, umode_t mode)
 {
-	return do_mkdir(dir, dchild, mode);
+	return do_mkdir(map, dir, dchild, mode);
 }
 #else
 static int ll_mkdir(struct inode *dir, struct dentry *dchild, umode_t mode)
 {
-	return do_mkdir(dir, dchild, mode);
+	return do_mkdir(&nop_mnt_idmap, dir, dchild, mode);
 }
 #endif
 
@@ -2322,6 +2330,10 @@ static int ll_rmdir(struct inode *dir, struct dentry *dchild)
 
 	if (dchild->d_inode != NULL)
 		op_data->op_fid3 = *ll_inode2fid(dchild->d_inode);
+
+	op_data->op_idmap = mnt_idmap(ll_i2sbi(dir)->ll_mnt.mnt);
+	/* VFS already checked permissions via may_delete() */
+	op_data->op_bias |= MDS_USERNS_BYPASS;
 
 	if (fid_is_zero(&op_data->op_fid2))
 		op_data->op_fid2 = op_data->op_fid3;
@@ -2415,6 +2427,14 @@ static int ll_unlink(struct inode *dir, struct dentry *dchild)
 		GOTO(out, rc = PTR_ERR(op_data));
 
 	op_data->op_fid3 = *ll_inode2fid(dchild->d_inode);
+	op_data->op_idmap = mnt_idmap(ll_i2sbi(dir)->ll_mnt.mnt);
+	/* VFS already checked write permission and sticky bit via
+	 * may_delete() before calling i_op->unlink, so tell the
+	 * MDS to skip its redundant permission checks. This is
+	 * needed for idmapped mounts where the MDS lacks the
+	 * idmap context to verify sticky bit correctly.
+	 */
+	op_data->op_bias |= MDS_USERNS_BYPASS;
 	/* notify lower layer if inode has dirty pages */
 	if (S_ISREG(dchild->d_inode->i_mode) &&
 	    ll_i2info(dchild->d_inode)->lli_clob &&
@@ -2494,6 +2514,8 @@ static int ll_rename(struct mnt_idmap *map,
 				     LUSTRE_OPC_ANY, NULL);
 	if (IS_ERR(op_data))
 		GOTO(out, err = PTR_ERR(op_data));
+
+	op_data->op_idmap = map;
 
 	/* If the client is using a subdir mount and does a rename to what it
 	 * sees as /.fscrypt, interpret it as the .fscrypt dir at fs root.

@@ -20,7 +20,7 @@ static int ll_get_context(struct inode *inode, void *ctx, size_t len)
 	 * as there is no xattr handler for "encryption.".
 	 */
 	rc = ll_xattr_list(inode, xattr_for_enc(inode),
-			   XATTR_ENCRYPTION_T, ctx, len, OBD_MD_FLXATTR);
+			   XATTR_ENCRYPTION_T, ctx, len, OBD_MD_FLXATTR, NULL);
 
 	/* used as encryption unit size */
 	if (S_ISREG(inode->i_mode))
@@ -90,7 +90,7 @@ static int ll_set_context(struct inode *inode, const void *ctx, size_t len,
 	 */
 	rc = md_setxattr(ll_i2mdexp(inode), ll_inode2fid(inode), OBD_MD_FLXATTR,
 			 xattr_for_enc(inode), ctx, len, XATTR_CREATE,
-			 ll_i2suppgid(inode), ll_i2projid(inode), &req);
+			 ll_i2suppgid(inode), ll_i2projid(inode), NULL, &req);
 
 	if (rc)
 		return rc;
