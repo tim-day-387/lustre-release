@@ -1196,6 +1196,41 @@ enum lnet_fault_rule_attr {
 
 #define LNET_FAULT_ATTR_MAX (__LNET_FAULT_ATTR_MAX_PLUS_ONE - 1)
 
+/** enum lnet_stats_attrs		- Global LNet traffic counter
+ *					  attributes for LNET_CMD_STATS
+ *
+ * @LNET_STATS_ATTR_MSGS_ALLOC:	Messages currently allocated (NLA_U32)
+ * @LNET_STATS_ATTR_MSGS_MAX:		Peak allocated messages (NLA_U32)
+ * @LNET_STATS_ATTR_ERRORS:		Total errors (NLA_U32)
+ * @LNET_STATS_ATTR_SEND_COUNT:	Total messages sent (NLA_U32)
+ * @LNET_STATS_ATTR_RECV_COUNT:	Total messages received (NLA_U32)
+ * @LNET_STATS_ATTR_ROUTE_COUNT:	Total messages routed (NLA_U32)
+ * @LNET_STATS_ATTR_DROP_COUNT:		Total messages dropped (NLA_U32)
+ * @LNET_STATS_ATTR_SEND_BYTES:		Total bytes sent (NLA_U64)
+ * @LNET_STATS_ATTR_RECV_BYTES:		Total bytes received (NLA_U64)
+ * @LNET_STATS_ATTR_ROUTE_BYTES:	Total bytes routed (NLA_U64)
+ * @LNET_STATS_ATTR_DROP_BYTES:		Total bytes dropped (NLA_U64)
+ */
+enum lnet_stats_attrs {
+	LNET_STATS_ATTR_UNSPEC		= 0,
+	LNET_STATS_ATTR_PAD		= LNET_STATS_ATTR_UNSPEC,
+	LNET_STATS_ATTR_HDR		= 1,
+	LNET_STATS_ATTR_MSGS_ALLOC	= 2,
+	LNET_STATS_ATTR_MSGS_MAX	= 3,
+	LNET_STATS_ATTR_ERRORS		= 4,
+	LNET_STATS_ATTR_SEND_COUNT	= 5,
+	LNET_STATS_ATTR_RECV_COUNT	= 6,
+	LNET_STATS_ATTR_ROUTE_COUNT	= 7,
+	LNET_STATS_ATTR_DROP_COUNT	= 8,
+	LNET_STATS_ATTR_SEND_BYTES	= 9,
+	LNET_STATS_ATTR_RECV_BYTES	= 10,
+	LNET_STATS_ATTR_ROUTE_BYTES	= 11,
+	LNET_STATS_ATTR_DROP_BYTES	= 12,
+	__LNET_STATS_ATTR_MAX_PLUS_ONE,
+};
+
+#define LNET_STATS_ATTR_MAX (__LNET_STATS_ATTR_MAX_PLUS_ONE - 1)
+
 struct lnet_ni {
 	/* chain on the lnet_net structure */
 	struct list_head	ni_netlist;

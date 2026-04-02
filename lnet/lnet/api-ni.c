@@ -1005,11 +1005,11 @@ lnet_counters_get_common_locked(struct lnet_counters_common *common)
 	struct lnet_counters *ctr;
 	int i;
 
-	/* FIXME !!! Their is no assert_lnet_net_locked() to ensure this
+	/* FIXME !!! There is no assert_lnet_net_locked() to ensure this
 	 * actually called under the protection of the lnet_net_lock.
+	 *
+	 * Callers are responsible for zeroing @common before calling.
 	 */
-	memset(common, 0, sizeof(*common));
-
 	cfs_percpt_for_each(ctr, i, the_lnet.ln_counters) {
 		common->lcc_msgs_max     += ctr->lct_common.lcc_msgs_max;
 		common->lcc_msgs_alloc   += ctr->lct_common.lcc_msgs_alloc;
@@ -1028,8 +1028,11 @@ lnet_counters_get_common_locked(struct lnet_counters_common *common)
 void
 lnet_counters_get_common(struct lnet_counters_common *common)
 {
+	memset(common, 0, sizeof(*common));
+
 	lnet_net_lock(LNET_LOCK_EX);
-	lnet_counters_get_common_locked(common);
+	if (the_lnet.ln_state == LNET_STATE_RUNNING)
+		lnet_counters_get_common_locked(common);
 	lnet_net_unlock(LNET_LOCK_EX);
 }
 EXPORT_SYMBOL(lnet_counters_get_common);
@@ -9981,6 +9984,154 @@ report_error:
 	RETURN(rc);
 }
 
+/* ---- LNET_CMD_STATS ---- */
+
+static const struct ln_key_list lnet_stats_list = {
+	.lkl_maxattr = LNET_STATS_ATTR_MAX,
+	.lkl_list = {
+		[LNET_STATS_ATTR_HDR]		= {
+			.lkp_value	= "stats",
+			.lkp_key_format	= LNKF_MAPPING,
+			.lkp_data_type	= NLA_NUL_STRING,
+		},
+		[LNET_STATS_ATTR_MSGS_ALLOC]	= {
+			.lkp_value	= "msgs_alloc",
+			.lkp_data_type	= NLA_U32,
+		},
+		[LNET_STATS_ATTR_MSGS_MAX]	= {
+			.lkp_value	= "msgs_max",
+			.lkp_data_type	= NLA_U32,
+		},
+		[LNET_STATS_ATTR_ERRORS]	= {
+			.lkp_value	= "errors",
+			.lkp_data_type	= NLA_U32,
+		},
+		[LNET_STATS_ATTR_SEND_COUNT]	= {
+			.lkp_value	= "send_count",
+			.lkp_data_type	= NLA_U32,
+		},
+		[LNET_STATS_ATTR_RECV_COUNT]	= {
+			.lkp_value	= "recv_count",
+			.lkp_data_type	= NLA_U32,
+		},
+		[LNET_STATS_ATTR_ROUTE_COUNT]	= {
+			.lkp_value	= "route_count",
+			.lkp_data_type	= NLA_U32,
+		},
+		[LNET_STATS_ATTR_DROP_COUNT]	= {
+			.lkp_value	= "drop_count",
+			.lkp_data_type	= NLA_U32,
+		},
+		[LNET_STATS_ATTR_SEND_BYTES]	= {
+			.lkp_value	= "send_bytes",
+			.lkp_data_type	= NLA_U64,
+		},
+		[LNET_STATS_ATTR_RECV_BYTES]	= {
+			.lkp_value	= "recv_bytes",
+			.lkp_data_type	= NLA_U64,
+		},
+		[LNET_STATS_ATTR_ROUTE_BYTES]	= {
+			.lkp_value	= "route_bytes",
+			.lkp_data_type	= NLA_U64,
+		},
+		[LNET_STATS_ATTR_DROP_BYTES]	= {
+			.lkp_value	= "drop_bytes",
+			.lkp_data_type	= NLA_U64,
+		},
+	},
+};
+
+struct lnet_stats_ctx {
+	bool	lsc_started;
+};
+
+static int lnet_stats_start(struct netlink_callback *cb)
+{
+	struct lnet_stats_ctx *ctx;
+
+	LIBCFS_ALLOC(ctx, sizeof(*ctx));
+	if (!ctx)
+		return -ENOMEM;
+
+	ctx->lsc_started = false;
+	cb->args[0] = (long)ctx;
+	return 0;
+}
+
+static int lnet_stats_dump(struct sk_buff *msg, struct netlink_callback *cb)
+{
+	struct lnet_stats_ctx *ctx = (void *)cb->args[0];
+	const struct ln_key_list *all[] = { &lnet_stats_list, NULL };
+	int portid = NETLINK_CB(cb->skb).portid;
+	int seq = cb->nlh->nlmsg_seq;
+	struct lnet_counters_common common;
+	void *hdr;
+	int rc;
+
+	if (ctx->lsc_started)
+		return 0;
+
+	rc = lnet_genl_send_scalar_list(msg, portid, seq, &lnet_family,
+					NLM_F_CREATE | NLM_F_MULTI,
+					LNET_CMD_STATS, all);
+	if (rc < 0)
+		GOTO(send_err, rc);
+
+	lnet_counters_get_common(&common);
+
+	hdr = genlmsg_put(msg, portid, seq, &lnet_family,
+			  NLM_F_MULTI, LNET_CMD_STATS);
+	if (!hdr)
+		GOTO(send_err, rc = -EMSGSIZE);
+
+	if (nla_put_string(msg, LNET_STATS_ATTR_HDR, "") ||
+	    nla_put_u32(msg, LNET_STATS_ATTR_MSGS_ALLOC,
+			common.lcc_msgs_alloc) ||
+	    nla_put_u32(msg, LNET_STATS_ATTR_MSGS_MAX,
+			common.lcc_msgs_max) ||
+	    nla_put_u32(msg, LNET_STATS_ATTR_ERRORS,
+			common.lcc_errors) ||
+	    nla_put_u32(msg, LNET_STATS_ATTR_SEND_COUNT,
+			common.lcc_send_count) ||
+	    nla_put_u32(msg, LNET_STATS_ATTR_RECV_COUNT,
+			common.lcc_recv_count) ||
+	    nla_put_u32(msg, LNET_STATS_ATTR_ROUTE_COUNT,
+			common.lcc_route_count) ||
+	    nla_put_u32(msg, LNET_STATS_ATTR_DROP_COUNT,
+			common.lcc_drop_count) ||
+	    nla_put_u64_64bit(msg, LNET_STATS_ATTR_SEND_BYTES,
+			      common.lcc_send_length,
+			      LNET_STATS_ATTR_PAD) ||
+	    nla_put_u64_64bit(msg, LNET_STATS_ATTR_RECV_BYTES,
+			      common.lcc_recv_length,
+			      LNET_STATS_ATTR_PAD) ||
+	    nla_put_u64_64bit(msg, LNET_STATS_ATTR_ROUTE_BYTES,
+			      common.lcc_route_length,
+			      LNET_STATS_ATTR_PAD) ||
+	    nla_put_u64_64bit(msg, LNET_STATS_ATTR_DROP_BYTES,
+			      common.lcc_drop_length,
+			      LNET_STATS_ATTR_PAD)) {
+		genlmsg_cancel(msg, hdr);
+		GOTO(send_err, rc = -EMSGSIZE);
+	}
+
+	genlmsg_end(msg, hdr);
+	ctx->lsc_started = true;
+send_err:
+	return rc;
+}
+
+static int lnet_stats_done(struct netlink_callback *cb)
+{
+	struct lnet_stats_ctx *ctx = (void *)cb->args[0];
+
+	if (ctx)
+		LIBCFS_FREE(ctx, sizeof(*ctx));
+	cb->args[0] = 0;
+
+	return 0;
+}
+
 static const struct genl_multicast_group lnet_mcast_grps[] = {
 	{ .name	=	"ip2net",	},
 	{ .name =	"net",		},
@@ -9993,7 +10144,8 @@ static const struct genl_multicast_group lnet_mcast_grps[] = {
 	{ .name =	"fault",	},
 	{ .name =	"routing",	},
 	{ .name =	"buffers",	},
-	{ .name =	"numa",	},
+	{ .name =	"numa",		},
+	{ .name =	"stats",	},
 };
 
 static const struct genl_ops lnet_genl_ops[] = {
@@ -10080,6 +10232,12 @@ static const struct genl_ops lnet_genl_ops[] = {
 		.cmd		= LNET_CMD_NUMA,
 		.flags		= GENL_ADMIN_PERM,
 		.doit		= lnet_numa_cmd,
+	},
+	{
+		.cmd		= LNET_CMD_STATS,
+		.start		= lnet_stats_start,
+		.dumpit		= lnet_stats_dump,
+		.done		= lnet_stats_done,
 	},
 };
 
