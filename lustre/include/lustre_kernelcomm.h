@@ -286,6 +286,47 @@ enum lustre_recovery_attrs {
 #define LUSTRE_RECOVERY_ATTR_MAX \
 	(__LUSTRE_RECOVERY_ATTR_MAX_PLUS_ONE - 1)
 
+
+/**
+ * enum lustre_ldlm_attrs	      - Lustre LDLM lock stats netlink
+ *					attributes
+ *
+ * @LUSTRE_LDLM_ATTR_UNSPEC:		unspecified attribute to catch errors
+ * @LUSTRE_LDLM_ATTR_PAD:		padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_LDLM_ATTR_HDR:		header (NLA_NUL_STRING)
+ * @LUSTRE_LDLM_ATTR_NAMESPACE:	lock namespace name (NLA_STRING)
+ * @LUSTRE_LDLM_ATTR_CONTENDED_LOCKS: contention threshold (NLA_U32)
+ * @LUSTRE_LDLM_ATTR_CONTENTION_SECONDS: contention time seconds (NLA_U32)
+ * @LUSTRE_LDLM_ATTR_MAX_NOLOCK_BYTES: max no-lock I/O bytes (NLA_U32)
+ * @LUSTRE_LDLM_ATTR_MAX_PARALLEL_AST: max parallel AST count (NLA_U32)
+ * @LUSTRE_LDLM_ATTR_LRU_SIZE:	current LRU size (NLA_U32)
+ * @LUSTRE_LDLM_ATTR_LRU_MAX:		max LRU size (NLA_U32)
+ * @LUSTRE_LDLM_ATTR_LRU_MAX_AGE:	max LRU age in seconds (NLA_U64)
+ * @LUSTRE_LDLM_ATTR_TIMEOUTS:	number of AST timeout evictions (NLA_U32)
+ * @LUSTRE_LDLM_ATTR_LOCK_STATS:	per-ns lock statistics (NLA_NESTED)
+ */
+enum lustre_ldlm_attrs {
+	LUSTRE_LDLM_ATTR_UNSPEC		= 0,
+	LUSTRE_LDLM_ATTR_PAD			= LUSTRE_LDLM_ATTR_UNSPEC,
+
+	LUSTRE_LDLM_ATTR_HDR			= 1,
+	LUSTRE_LDLM_ATTR_NAMESPACE		= 2,
+	LUSTRE_LDLM_ATTR_CONTENDED_LOCKS	= 3,
+	LUSTRE_LDLM_ATTR_CONTENTION_SECONDS	= 4,
+	LUSTRE_LDLM_ATTR_MAX_NOLOCK_BYTES	= 5,
+	LUSTRE_LDLM_ATTR_MAX_PARALLEL_AST	= 6,
+	LUSTRE_LDLM_ATTR_LRU_SIZE		= 7,
+	LUSTRE_LDLM_ATTR_LRU_MAX		= 8,
+	LUSTRE_LDLM_ATTR_LRU_MAX_AGE		= 9,
+	LUSTRE_LDLM_ATTR_TIMEOUTS		= 10,
+	LUSTRE_LDLM_ATTR_LOCK_STATS		= 11,
+
+	__LUSTRE_LDLM_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_LDLM_ATTR_MAX	(__LUSTRE_LDLM_ATTR_MAX_PLUS_ONE - 1)
+
 /**
  * enum lustre_obd_params_attrs	      - Lustre OBD scalar parameters
  *					netlink attributes
@@ -514,6 +555,9 @@ int lustre_nl_put_dataset(struct sk_buff *msg, struct lprocfs_stats *stats,
 
 extern struct genl_family lustre_family;
 extern const struct ln_key_list stats_dataset_list;
+
+int ldlm_netlink_init(void);
+void ldlm_netlink_fini(void);
 
 #ifdef HAVE_SERVER_SUPPORT
 int lustre_target_nl_init(void);

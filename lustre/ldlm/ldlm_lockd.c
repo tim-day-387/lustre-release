@@ -20,6 +20,7 @@
 #include <linux/list.h>
 #include <lustre_errno.h>
 #include <lustre_dlm.h>
+#include <lustre_kernelcomm.h>
 #include <obd_class.h>
 #include "ldlm_internal.h"
 
@@ -3591,6 +3592,8 @@ static int ldlm_cleanup(void)
 
 int ldlm_init(void)
 {
+	int rc;
+
 	BUILD_BUG_ON(LDLM_TYPE_END  > (1 << 4 /* lr_type bits */));
 	BUILD_BUG_ON(LVB_T_END      > (1 << 3 /* l_lvb_type bits */));
 	BUILD_BUG_ON(LCK_MODE_END   > (1 << 9 /* l_req_mode/l_granted_mode */));
@@ -3630,23 +3633,33 @@ int ldlm_init(void)
 #if LUSTRE_TRACKS_LOCK_EXP_REFS
 	class_export_dump_hook = ldlm_dump_export_locks;
 #endif
+
+	rc = ldlm_netlink_init();
+	if (rc)
+		goto out_netlink;
+
 	return 0;
+
+out_netlink:
 #ifdef CONFIG_LUSTRE_FS_SERVER
+	kmem_cache_destroy(ldlm_glimpse_work_kmem);
 out_inodebits:
 	kmem_cache_destroy(ldlm_inodebits_slab);
 out_interval_tree:
-	kmem_cache_destroy(ldlm_interval_tree_slab);
 #endif
+	kmem_cache_destroy(ldlm_interval_tree_slab);
 out_lock_slab:
 	kmem_cache_destroy(ldlm_lock_slab);
 out_resource:
 	kmem_cache_destroy(ldlm_resource_slab);
 
-	return -ENOMEM;
+	return rc ? rc : -ENOMEM;
 }
 
 void ldlm_exit(void)
 {
+	ldlm_netlink_fini();
+
 	if (ldlm_refcount)
 		CERROR("ldlm_refcount is %d in %s\n", ldlm_refcount, __func__);
 	rcu_barrier();
