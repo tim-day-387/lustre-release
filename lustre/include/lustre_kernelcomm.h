@@ -568,6 +568,64 @@ struct changelog_nl_entry {
 typedef GENRADIX(struct changelog_nl_entry) changelog_entry_radix_t;
 typedef GENRADIX(struct changelog_nl_user)  changelog_user_radix_t;
 
+/**
+ * enum lustre_quota_attrs	      - Lustre quota netlink attributes
+ *
+ * @LUSTRE_QUOTA_ATTR_UNSPEC:		unspecified attribute to catch errors
+ * @LUSTRE_QUOTA_ATTR_PAD:		padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_QUOTA_ATTR_HDR:		header for quota data (NLA_NUL_STRING)
+ * @LUSTRE_QUOTA_ATTR_SOURCE:		target device name (NLA_NUL_STRING)
+ * @LUSTRE_QUOTA_ATTR_RECORD_TYPE:	"global" or "acct" (NLA_NUL_STRING)
+ * @LUSTRE_QUOTA_ATTR_POOL:		pool name (NLA_NUL_STRING)
+ * @LUSTRE_QUOTA_ATTR_MANAGER:	resource type: "dt" or "md"
+ * @LUSTRE_QUOTA_ATTR_QTYPE:	quota type: "usr","grp","prj"
+ * @LUSTRE_QUOTA_ATTR_ID:		quota ID (NLA_U64)
+ * @LUSTRE_QUOTA_ATTR_HARDLIMIT:	hard limit in kbytes or inodes (NLA_U64)
+ * @LUSTRE_QUOTA_ATTR_SOFTLIMIT:	soft limit in kbytes or inodes (NLA_U64)
+ * @LUSTRE_QUOTA_ATTR_GRANTED:		space granted to slaves (NLA_U64)
+ * @LUSTRE_QUOTA_ATTR_KBYTES:		kbytes used, accounting only (NLA_U64)
+ * @LUSTRE_QUOTA_ATTR_INODES:		inodes used, accounting only (NLA_U64)
+ */
+enum lustre_quota_attrs {
+	LUSTRE_QUOTA_ATTR_UNSPEC	= 0,
+	LUSTRE_QUOTA_ATTR_PAD		= LUSTRE_QUOTA_ATTR_UNSPEC,
+
+	LUSTRE_QUOTA_ATTR_HDR		= 1,
+	LUSTRE_QUOTA_ATTR_SOURCE	= 2,
+	LUSTRE_QUOTA_ATTR_RECORD_TYPE	= 3,
+	LUSTRE_QUOTA_ATTR_POOL		= 4,
+	LUSTRE_QUOTA_ATTR_MANAGER	= 5,
+	LUSTRE_QUOTA_ATTR_QTYPE	= 6,
+	LUSTRE_QUOTA_ATTR_ID		= 7,
+	LUSTRE_QUOTA_ATTR_HARDLIMIT	= 8,
+	LUSTRE_QUOTA_ATTR_SOFTLIMIT	= 9,
+	LUSTRE_QUOTA_ATTR_GRANTED	= 10,
+	LUSTRE_QUOTA_ATTR_KBYTES	= 11,
+	LUSTRE_QUOTA_ATTR_INODES	= 12,
+
+	__LUSTRE_QUOTA_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_QUOTA_ATTR_MAX	(__LUSTRE_QUOTA_ATTR_MAX_PLUS_ONE - 1)
+
+struct quota_nl_entry {
+	char	qne_source[MAX_OBD_NAME];
+	char	qne_record_type[8];
+	char	qne_pool[LOV_MAXPOOLNAME + 1];
+	char	qne_manager[4];
+	char	qne_qtype[4];
+	__u64	qne_id;
+	__u64	qne_hardlimit;
+	__u64	qne_softlimit;
+	__u64	qne_granted;
+	__u64	qne_kbytes;
+	__u64	qne_inodes;
+};
+
+/* See changelog typedefs above for why GENRADIX typedefs are needed. */
+typedef GENRADIX(struct quota_nl_entry) quota_nl_radix_t;
+
 /* prototype for callback function on kuc groups */
 typedef int (*libcfs_kkuc_cb_t)(void *data, void *cb_arg);
 
@@ -640,6 +698,9 @@ extern const struct ln_key_list stats_dataset_list;
 
 int ldlm_netlink_init(void);
 void ldlm_netlink_fini(void);
+
+int lquota_netlink_init(void);
+void lquota_netlink_fini(void);
 
 #ifdef HAVE_SERVER_SUPPORT
 int lustre_target_nl_init(void);

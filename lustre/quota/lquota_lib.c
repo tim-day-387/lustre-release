@@ -585,7 +585,14 @@ static int __init lquota_init(void)
 	if (rc)
 		GOTO(out_qmt, rc);
 
+	rc = lquota_netlink_init();
+	if (rc)
+		GOTO(out_qsd, rc);
+
 	RETURN(0);
+
+out_qsd:
+	qsd_glb_fini();
 
 out_qmt:
 	qmt_glb_fini();
@@ -598,6 +605,7 @@ out_key:
 
 static void __exit lquota_exit(void)
 {
+	lquota_netlink_fini();
 	qsd_glb_fini();
 	qmt_glb_fini();
 	lu_kmem_fini(lquota_caches);

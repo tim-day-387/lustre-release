@@ -8,6 +8,7 @@
 #include <obd.h>
 #include <dt_object.h>
 #include <cfs_hash.h>
+#include <lustre_kernelcomm.h>
 #include <lustre_quota.h>
 
 #ifndef _LQUOTA_INTERNAL_H
@@ -511,4 +512,14 @@ extern const struct proc_ops lprocfs_quota_seq_fops;
 /* qsd_lib.c */
 int qsd_glb_init(void);
 void qsd_glb_fini(void);
+
+/* qmt_netlink.c */
+int lustre_quota_nl_collect(quota_nl_radix_t *list, unsigned int *count);
+
+/* qsd_netlink.c */
+int lustre_quota_acct_nl_collect(quota_nl_radix_t *list, unsigned int *count);
+
+/* lquota_netlink.c */
+int lquota_netlink_init(void);
+void lquota_netlink_fini(void);
 #endif /* _LQUOTA_INTERNAL_H */

@@ -12,7 +12,8 @@ qmt-objs := \
 	qmt_handler.o \
 	qmt_lqa.o \
 	qmt_lock.o \
-	qmt_pool.o
+	qmt_pool.o \
+	qmt_netlink.o
 
 qsd-objs := \
 	qsd_config.o \
@@ -22,13 +23,15 @@ qsd-objs := \
 	qsd_lock.o \
 	qsd_reint.o \
 	qsd_request.o \
-	qsd_writeback.o
+	qsd_writeback.o \
+	qsd_netlink.o
 
 quota-objs := \
 	lproc_quota.o \
 	lquota_disk.o \
 	lquota_entry.o \
-	lquota_lib.o
+	lquota_lib.o \
+	lquota_netlink.o
 
 lquota-objs := \
 	$(qsd-objs) \

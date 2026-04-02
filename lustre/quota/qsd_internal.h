@@ -399,7 +399,11 @@ int qsd_fetch_index(const struct lu_env *, struct obd_export *,
 void qsd_bump_version(struct qsd_qtype_info *, __u64, bool);
 void qsd_upd_schedule(struct qsd_qtype_info *, struct lquota_entry *,
 		      union lquota_id *, union lquota_rec *, __u64, bool);
+/* qsd_netlink.c — see also lquota_internal.h for lustre_quota_acct_nl_collect */
+
 /* qsd_config.c */
+extern struct list_head qfs_list;
+extern spinlock_t qfs_list_lock;
 struct qsd_fsinfo *qsd_get_fsinfo(char *, bool);
 void qsd_put_fsinfo(struct qsd_fsinfo *);
 int qsd_config(char *valstr, char *fsname, int pool);

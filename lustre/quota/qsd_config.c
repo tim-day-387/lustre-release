@@ -17,9 +17,9 @@
 
 #include "qsd_internal.h"
 
-static LIST_HEAD(qfs_list);
+LIST_HEAD(qfs_list);
 /* protect the qfs_list */
-static DEFINE_SPINLOCK(qfs_list_lock);
+DEFINE_SPINLOCK(qfs_list_lock);
 
 /*
  * Put reference of qsd_fsinfo.
