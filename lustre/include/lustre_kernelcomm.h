@@ -486,6 +486,88 @@ enum lustre_job_stats_attrs {
 #define LUSTRE_JOB_STATS_ATTR_MAX \
 	(__LUSTRE_JOB_STATS_ATTR_MAX_PLUS_ONE - 1)
 
+
+/**
+ * enum lustre_changelog_attrs	      - Lustre changelog netlink attributes
+ *
+ * @LUSTRE_CHANGELOG_ATTR_UNSPEC:	unspecified attribute to catch errors
+ * @LUSTRE_CHANGELOG_ATTR_PAD:		padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_CHANGELOG_ATTR_HDR:		header (NLA_NUL_STRING)
+ * @LUSTRE_CHANGELOG_ATTR_SOURCE:	MDT device name (NLA_STRING)
+ * @LUSTRE_CHANGELOG_ATTR_INDEX:	current changelog record index (NLA_U64)
+ * @LUSTRE_CHANGELOG_ATTR_USERS:	changelog users (NLA_NESTED)
+ */
+enum lustre_changelog_attrs {
+	LUSTRE_CHANGELOG_ATTR_UNSPEC	= 0,
+	LUSTRE_CHANGELOG_ATTR_PAD	= LUSTRE_CHANGELOG_ATTR_UNSPEC,
+
+	LUSTRE_CHANGELOG_ATTR_HDR	= 1,
+	LUSTRE_CHANGELOG_ATTR_SOURCE	= 2,
+	LUSTRE_CHANGELOG_ATTR_INDEX	= 3,
+	LUSTRE_CHANGELOG_ATTR_USERS	= 4,
+
+	__LUSTRE_CHANGELOG_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_CHANGELOG_ATTR_MAX \
+	(__LUSTRE_CHANGELOG_ATTR_MAX_PLUS_ONE - 1)
+
+/**
+ * enum lustre_changelog_user_attrs   - Lustre changelog user netlink
+ *					attributes (nested inside
+ *					LUSTRE_CHANGELOG_ATTR_USERS)
+ *
+ * @LUSTRE_CHANGELOG_USER_ATTR_UNSPEC: unspecified attribute to catch errors
+ * @LUSTRE_CHANGELOG_USER_ATTR_PAD:	padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_CHANGELOG_USER_ATTR_ID:	user name string (NLA_STRING)
+ * @LUSTRE_CHANGELOG_USER_ATTR_INDEX:	last consumed record index (NLA_U64)
+ * @LUSTRE_CHANGELOG_USER_ATTR_IDLE_SECS: seconds since last activity (NLA_U32)
+ * @LUSTRE_CHANGELOG_USER_ATTR_MASK:	changelog event mask (NLA_U32)
+ */
+enum lustre_changelog_user_attrs {
+	LUSTRE_CHANGELOG_USER_ATTR_UNSPEC	= 0,
+	LUSTRE_CHANGELOG_USER_ATTR_PAD		= LUSTRE_CHANGELOG_USER_ATTR_UNSPEC,
+
+	LUSTRE_CHANGELOG_USER_ATTR_ID		= 1,
+	LUSTRE_CHANGELOG_USER_ATTR_INDEX	= 2,
+	LUSTRE_CHANGELOG_USER_ATTR_IDLE_SECS	= 3,
+	LUSTRE_CHANGELOG_USER_ATTR_MASK	= 4,
+
+	__LUSTRE_CHANGELOG_USER_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_CHANGELOG_USER_ATTR_MAX \
+	(__LUSTRE_CHANGELOG_USER_ATTR_MAX_PLUS_ONE - 1)
+
+/* Changelog *user* state for netlink (not changelog records themselves).
+ * Collected and dumped by mdd.ko via MDD_NL_CMD_CHANGELOG.
+ * Two genradixes are used: one for per-MDT entries, one for all users.
+ * Each entry stores a user_offset/num_users pair into the user genradix.
+ */
+struct changelog_nl_user {
+	char	cnu_id[30]; /* CHANGELOG_USER_NAMELEN_FULL */
+	__u16	cnu_pad;
+	__u64	cnu_index;
+	__u32	cnu_idle_secs;
+	__u32	cnu_mask;
+};
+
+struct changelog_nl_entry {
+	char	cne_source[MAX_OBD_NAME];
+	__u64	cne_index;
+	__u32	cne_num_users;
+	__u32	cne_user_offset; /* start index in user genradix */
+};
+
+/* Typedefs required: each GENRADIX() expansion creates a distinct
+ * anonymous struct type, so without a shared typedef the pointer types
+ * are incompatible across translation units.
+ */
+typedef GENRADIX(struct changelog_nl_entry) changelog_entry_radix_t;
+typedef GENRADIX(struct changelog_nl_user)  changelog_user_radix_t;
+
 /* prototype for callback function on kuc groups */
 typedef int (*libcfs_kkuc_cb_t)(void *data, void *cb_arg);
 

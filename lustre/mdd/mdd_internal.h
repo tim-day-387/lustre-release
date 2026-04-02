@@ -451,6 +451,10 @@ char *mdd_chlg_username(struct llog_changelog_user_rec2 *rec, char *buf,
 __u32 mdd_chlg_usermask(struct llog_changelog_user_rec2 *rec);
 int mdd_changelog_recalc_mask(const struct lu_env *env, struct mdd_device *mdd);
 
+/* mdd_netlink.c */
+int mdd_netlink_init(void);
+void mdd_netlink_fini(void);
+
 /* mdd_prepare.c */
 int mdd_compat_fixes(const struct lu_env *env, struct mdd_device *mdd);
 

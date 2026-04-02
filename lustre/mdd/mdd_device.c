@@ -2467,13 +2467,24 @@ static int __init mdd_init(void)
 
 	rc = class_register_type(&mdd_obd_device_ops, NULL, false,
 				 LUSTRE_MDD_NAME, &mdd_device_type);
-	if (rc)
+	if (rc) {
 		lu_kmem_fini(mdd_caches);
-	return rc;
+		return rc;
+	}
+
+	rc = mdd_netlink_init();
+	if (rc) {
+		class_unregister_type(LUSTRE_MDD_NAME);
+		lu_kmem_fini(mdd_caches);
+		return rc;
+	}
+
+	return 0;
 }
 
 static void __exit mdd_exit(void)
 {
+	mdd_netlink_fini();
 	class_unregister_type(LUSTRE_MDD_NAME);
 	lu_kmem_fini(mdd_caches);
 }

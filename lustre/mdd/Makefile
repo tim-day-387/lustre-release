@@ -12,6 +12,7 @@ mdd-objs := \
 	mdd_dir.o \
 	mdd_lock.o \
 	mdd_lproc.o \
+	mdd_netlink.o \
 	mdd_object.o \
 	mdd_orphans.o \
 	mdd_permission.o \
