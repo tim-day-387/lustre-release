@@ -30,15 +30,25 @@
  * @LUSTRE_CMD_UNSPEC:			unspecified command to catch errors
  *
  * @LUSTRE_CMD_DEVICES:			command to manage the Lustre devices
+ * @LUSTRE_CMD_KUC:			reserved for KUC
  * @LUSTRE_CMD_TARGETS:			command to manage the Lustre targets
+ * @LUSTRE_CMD_IMPORT:			reserved for import
  * @LUSTRE_CMD_STATS:			Lustre stats collection command
+ * @LUSTRE_CMD_POOL:			reserved for pool
+ * @LUSTRE_CMD_HEALTH:			health and memory status
+ * @LUSTRE_CMD_EXPORTS:			per-client export stats
+ * @LUSTRE_CMD_OBD_PARAMS:		scalar OBD params (statfs, grants)
  */
 enum lustre_commands {
 	LUSTRE_CMD_UNSPEC	= 0,
 
 	LUSTRE_CMD_DEVICES	= 1,
+	LUSTRE_CMD_KUC		= 2,	/* reserved */
 	LUSTRE_CMD_TARGETS	= 3,
+	LUSTRE_CMD_IMPORT	= 4,	/* reserved */
 	LUSTRE_CMD_STATS	= 5,
+	LUSTRE_CMD_POOL		= 6,	/* reserved */
+	LUSTRE_CMD_HEALTH	= 7,
 
 	__LUSTRE_CMD_MAX_PLUS_ONE
 };

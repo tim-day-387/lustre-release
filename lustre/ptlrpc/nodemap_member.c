@@ -71,6 +71,7 @@ void nm_member_delete_list(struct lu_nodemap *nodemap)
 static void nm_register_obd_stats(struct lu_nodemap *nm, struct obd_export *exp)
 {
 	struct obd_device *obd = exp->exp_obd;
+	char source[MAX_OBD_NAME * 4];
 
 	if (unlikely(!exp->exp_obd->obd_stats && !exp->exp_obd->obd_md_stats))
 		return;
@@ -97,6 +98,9 @@ static void nm_register_obd_stats(struct lu_nodemap *nm, struct obd_export *exp)
 				    nm->nm_pde_data->npe_debugfs_entry,
 				    nm->nm_md_stats,
 				    &ldebugfs_stats_seq_fops);
+		snprintf(source, sizeof(source), "nodemap_md.%s",
+			 nm->nm_name);
+		ldebugfs_stats_register(nm->nm_md_stats, source);
 	}
 	if (obd->obd_stats && !nm->nm_dt_stats) {
 		nm->nm_dt_stats = lprocfs_stats_dup(obd->obd_stats);
@@ -109,6 +113,9 @@ static void nm_register_obd_stats(struct lu_nodemap *nm, struct obd_export *exp)
 				    nm->nm_pde_data->npe_debugfs_entry,
 				    nm->nm_dt_stats,
 				    &ldebugfs_stats_seq_fops);
+		snprintf(source, sizeof(source), "nodemap_dt.%s",
+			 nm->nm_name);
+		ldebugfs_stats_register(nm->nm_dt_stats, source);
 	}
 
 unlock:

@@ -22,14 +22,17 @@
 #include <linux/generic-radix-tree.h>
 #include <net/genetlink.h>
 #include <net/sock.h>
-/* For declarations shared with userspace */
 #include <uapi/linux/lustre/lustre_kernelcomm.h>
+#include <uapi/linux/lustre/lustre_user.h>
+
+struct obd_device;
+struct lprocfs_stats;
 
 /**
  * enum lustre_device_attrs	      - Lustre general top-level netlink
  *					attributes that describe lustre
  *					'devices'. These values are used
- *					to piece togther messages for
+ *					to piece together messages for
  *					sending and receiving.
  *
  * @LUSTRE_DEVICE_ATTR_UNSPEC:		unspecified attribute to catch errors
@@ -92,7 +95,7 @@ enum lustre_param_list_attrs {
  * @LUSTRE_STATS_ATTR_TIMESTAMP:       time of collection in nanoseconds
  *				       (NLA_S64)
  * @LUSTRE_STATS_ATTR_START_TIME:      start time of collection (NLA_S64)
- * @LUSTRE_STATS_ATTR_ELPASE_TIME:     elpase time of collection (NLA_S64)
+ * @LUSTRE_STATS_ATTR_ELAPSED_TIME:    elapsed time of collection (NLA_S64)
  * @LUSTRE_STATS_ATTR_DATASET:	       bookmarks for that stats data
  *				       (NLA_NESTED)
  */
@@ -163,7 +166,7 @@ int lustre_stats_done(struct netlink_callback *cb);
  * enum lustre_target_attrs	      - Lustre general top-level netlink
  *					attributes that describe lustre
  *					'target_obd'. These values are used
- *					to piece togther messages for
+ *					to piece together messages for
  *					sending and receiving.
  *
  * @LUSTRE_TARGET_ATTR_UNSPEC:		unspecified attribute to catch errors
@@ -206,6 +209,36 @@ enum lustre_target_prop_attrs {
 
 #define LUSTRE_TARGET_PROP_ATTR_MAX	(__LUSTRE_TARGET_PROP_ATTR_MAX_PLUS_ONE - 1)
 
+/**
+ * enum lustre_health_attrs	      - Lustre health netlink attributes
+ *
+ * @LUSTRE_HEALTH_ATTR_UNSPEC:		unspecified attribute to catch errors
+ * @LUSTRE_HEALTH_ATTR_PAD:		padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_HEALTH_ATTR_HDR:		header for health data (NLA_NUL_STRING)
+ * @LUSTRE_HEALTH_ATTR_HEALTHY:		health status (NLA_U8, 1=healthy)
+ * @LUSTRE_HEALTH_ATTR_MEMUSED:		current OBD memory in bytes (NLA_U64)
+ * @LUSTRE_HEALTH_ATTR_MEMUSED_MAX:	peak OBD memory in bytes (NLA_U64)
+ * @LUSTRE_HEALTH_ATTR_LNET_MEMUSED:	current LNet memory in bytes (NLA_U64)
+ * @LUSTRE_HEALTH_ATTR_UNHEALTHY_DEVS:	space-separated names of unhealthy
+ *					OBD devices (NLA_NUL_STRING)
+ */
+enum lustre_health_attrs {
+	LUSTRE_HEALTH_ATTR_UNSPEC	= 0,
+	LUSTRE_HEALTH_ATTR_PAD		= LUSTRE_HEALTH_ATTR_UNSPEC,
+
+	LUSTRE_HEALTH_ATTR_HDR		= 1,
+	LUSTRE_HEALTH_ATTR_HEALTHY	= 2,
+	LUSTRE_HEALTH_ATTR_MEMUSED	= 3,
+	LUSTRE_HEALTH_ATTR_MEMUSED_MAX	= 4,
+	LUSTRE_HEALTH_ATTR_LNET_MEMUSED	= 5,
+	LUSTRE_HEALTH_ATTR_UNHEALTHY_DEVS = 6,
+
+	__LUSTRE_HEALTH_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_HEALTH_ATTR_MAX	(__LUSTRE_HEALTH_ATTR_MAX_PLUS_ONE - 1)
+
 /* prototype for callback function on kuc groups */
 typedef int (*libcfs_kkuc_cb_t)(void *data, void *cb_arg);
 
@@ -219,6 +252,62 @@ int libcfs_kkuc_group_add(struct file *fp, const struct obd_uuid *uuid, int uid,
 int libcfs_kkuc_group_rem(const struct obd_uuid *uuid, int uid, int group);
 int libcfs_kkuc_group_foreach(const struct obd_uuid *uuid, int group,
 			      libcfs_kkuc_cb_t cb_func, void *cb_arg);
+
+/*
+ * Table-driven netlink handler framework.
+ *
+ * Commands that iterate OBD devices share a common start/dump/done
+ * pattern.  Each command defines a static lustre_nl_obd_ops descriptor
+ * and provides callbacks for the parts that differ.
+ */
+struct lustre_nl_ctx;
+
+struct lustre_nl_obd_ops {
+	const char		*refname;
+	const char		*filter_key;
+	const struct genl_family	*family;
+	size_t			entry_size;
+	size_t			ctx_size;
+	size_t			list_offset;
+	u32			min_alloc;
+	int			cmd;
+	const struct ln_key_list **keys;
+	bool (*device_match)(struct obd_device *obd);
+	const char *(*filter_target)(struct obd_device *obd);
+	int  (*collect)(struct lustre_nl_ctx *ctx, struct obd_device *obd);
+	void (*release)(void *entry);
+	int  (*dump_one)(struct sk_buff *msg, void *entry, bool first);
+};
+
+struct lustre_nl_ctx {
+	const struct lustre_nl_obd_ops	*ops;
+	unsigned int			index;
+	unsigned int			count;
+	bool				key_sent;
+};
+
+static inline struct __genradix *
+lustre_nl_genradix(struct lustre_nl_ctx *ctx)
+{
+	return (struct __genradix *)((char *)ctx + ctx->ops->list_offset);
+}
+
+static inline void *
+lustre_nl_entry(struct lustre_nl_ctx *ctx, unsigned int idx)
+{
+	return __genradix_ptr(lustre_nl_genradix(ctx),
+			      __idx_to_offset(idx, ctx->ops->entry_size));
+}
+
+int lustre_obd_nl_start(struct netlink_callback *cb,
+			const struct lustre_nl_obd_ops *ops);
+int lustre_obd_nl_dump(struct sk_buff *msg, struct netlink_callback *cb);
+int lustre_obd_nl_done(struct netlink_callback *cb);
+int lustre_nl_put_dataset(struct sk_buff *msg, struct lprocfs_stats *stats,
+			  int base_attr);
+
+extern struct genl_family lustre_family;
+extern const struct ln_key_list stats_dataset_list;
 
 #endif /* __LUSTRE_KERNELCOMM_H__ */
 

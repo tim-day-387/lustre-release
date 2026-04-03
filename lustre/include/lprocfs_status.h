@@ -529,6 +529,7 @@ extern void lprocfs_init_ldlm_stats(struct lprocfs_stats *ldlm_stats);
 struct lprocfs_stats *ldebugfs_stats_alloc(int num, char *name,
 					   struct dentry *entry,
 					   enum lprocfs_stats_flags flags);
+int ldebugfs_stats_register(struct lprocfs_stats *stats, const char *source);
 extern int ldebugfs_alloc_obd_stats(struct obd_device *obd,
 				    unsigned int num_stats);
 extern int lprocfs_alloc_md_stats(struct obd_device *obd,

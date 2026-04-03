@@ -1498,7 +1498,7 @@ struct lprocfs_stats *ldebugfs_stats_alloc(int num, char *name,
 	xa_lock(&lstats_list);
 	stats->ls_index = atomic_read(&lstats_count);
 	rc = __xa_alloc(&lstats_list, &stats->ls_index, stats, xa_limit_31b,
-			GFP_KERNEL);
+			GFP_ATOMIC);
 	if (rc < 0) {
 		xa_unlock(&lstats_list);
 		lprocfs_stats_free(&stats);
@@ -1521,6 +1521,42 @@ struct lprocfs_stats *ldebugfs_stats_alloc(int num, char *name,
 	return stats;
 }
 EXPORT_SYMBOL(ldebugfs_stats_alloc);
+
+/**
+ * ldebugfs_stats_register() - Register an existing stats object for netlink.
+ * @stats: lprocfs_stats previously created by lprocfs_stats_dup() or similar
+ * @source: dot-separated source name (e.g. "nodemap_dt.engineering")
+ *
+ * Adds @stats to the lstats_list xarray so it is discoverable by
+ * LUSTRE_CMD_STATS netlink.  Does not create debugfs files -- the caller
+ * is responsible for those.  Cleanup is automatic: lprocfs_stats_free()
+ * removes the xarray entry when ls_index != -1.
+ *
+ * Return: 0 on success, negative errno on failure.
+ */
+int ldebugfs_stats_register(struct lprocfs_stats *stats, const char *source)
+{
+	int rc;
+
+	if (!stats || !source)
+		return -EINVAL;
+
+	strscpy(stats->ls_source, source, sizeof(stats->ls_source));
+
+	xa_lock(&lstats_list);
+	stats->ls_index = atomic_read(&lstats_count);
+	rc = __xa_alloc(&lstats_list, &stats->ls_index, stats, xa_limit_31b,
+			GFP_ATOMIC);
+	if (rc < 0) {
+		xa_unlock(&lstats_list);
+		return rc;
+	}
+	atomic_inc(&lstats_count);
+	xa_unlock(&lstats_list);
+
+	return 0;
+}
+EXPORT_SYMBOL(ldebugfs_stats_register);
 
 static void stats_free(struct kref *kref)
 {
