@@ -21,3 +21,7 @@ libcfs-y += $(patsubst %,mm/%,$(mm_objs))
 
 # Debug objects
 libcfs-y += ../debug/module.o ../debug/debug.o ../debug/fail.o ../debug/tracefile.o
+
+ifdef CONFIG_GCOV_PROFILE_LUSTRE
+GCOV_PROFILE := y
+endif
