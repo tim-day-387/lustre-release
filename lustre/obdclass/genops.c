@@ -2399,9 +2399,6 @@ __u16 obd_get_mod_rpc_slot(struct client_obd *cli, __u32 opc)
 		cli->cl_mod_rpcs_in_flight++;
 		if (wait.close_req)
 			cli->cl_close_rpcs_in_flight++;
-		LCONSOLE_INFO("%s: Force grant RPC slot (%u current) to proc with flag: %x.\n",
-			cli->cl_import->imp_obd->obd_name,
-			cli->cl_mod_rpcs_in_flight, current->flags);
 	} else {
 		__add_wait_queue_entry_tail(&cli->cl_mod_rpcs_waitq, &wait.wqe);
 		/* This wakeup will only succeed if the maximums haven't
