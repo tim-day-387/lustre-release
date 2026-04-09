@@ -55,6 +55,62 @@ enum lustre_commands {
 
 #define LUSTRE_CMD_MAX	(__LUSTRE_CMD_MAX_PLUS_ONE - 1)
 
+#define TARGET_GENL_NAME	"target"
+#define TARGET_GENL_VERSION	0x01
+
+enum target_commands {
+	TARGET_CMD_UNSPEC	= 0,
+
+	TARGET_CMD_RECOVERY	= 1,
+	TARGET_CMD_BRW_STATS	= 2,
+	TARGET_CMD_JOB_STATS	= 3,
+	TARGET_CMD_OBD_PARAMS	= 4,
+	TARGET_CMD_EXPORTS	= 5,
+
+	__TARGET_CMD_MAX_PLUS_ONE
+};
+
+#define TARGET_CMD_MAX	(__TARGET_CMD_MAX_PLUS_ONE - 1)
+
+#define LDLM_GENL_NAME		"ldlm"
+#define LDLM_GENL_VERSION	0x01
+
+enum ldlm_nl_commands {
+	LDLM_NL_CMD_UNSPEC	= 0,
+
+	LDLM_NL_CMD_STATS	= 1,
+
+	__LDLM_NL_CMD_MAX_PLUS_ONE
+};
+
+#define LDLM_NL_CMD_MAX	(__LDLM_NL_CMD_MAX_PLUS_ONE - 1)
+
+#define MDD_GENL_NAME		"mdd"
+#define MDD_GENL_VERSION	0x01
+
+enum mdd_nl_commands {
+	MDD_NL_CMD_UNSPEC	= 0,
+
+	MDD_NL_CMD_CHANGELOG	= 1,
+
+	__MDD_NL_CMD_MAX_PLUS_ONE
+};
+
+#define MDD_NL_CMD_MAX	(__MDD_NL_CMD_MAX_PLUS_ONE - 1)
+
+#define LQUOTA_GENL_NAME	"lquota"
+#define LQUOTA_GENL_VERSION	0x01
+
+enum lquota_nl_commands {
+	LQUOTA_NL_CMD_UNSPEC	= 0,
+
+	LQUOTA_NL_CMD_QUOTA	= 1,
+
+	__LQUOTA_NL_CMD_MAX_PLUS_ONE
+};
+
+#define LQUOTA_NL_CMD_MAX	(__LQUOTA_NL_CMD_MAX_PLUS_ONE - 1)
+
 /* KUC message header.
  * All current and future KUC messages should use this header.
  * To avoid having to include Lustre headers from libcfs, define this here.

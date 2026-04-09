@@ -12,3 +12,4 @@ target_objs += out_lib.o update_trans.o
 target_objs += update_records.o update_recovery.o
 target_objs += tgt_grant.o tgt_fmd.o barrier.o
 target_objs += tgt_mount.o
+target_objs += kernelcomm.o

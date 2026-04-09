@@ -1861,6 +1861,8 @@ enum dt_otable_it_flags {
 #define DT_OTABLE_IT_FLAGS_SHIFT	16
 #define DT_OTABLE_IT_FLAGS_MASK	0xffff0000
 
+struct brw_stats;
+
 struct dt_device {
 	struct lu_device                   dd_lu_dev;
 	const struct dt_device_operations *dd_ops;
@@ -1876,6 +1878,9 @@ struct dt_device {
 	struct list_head		   dd_txn_callbacks;
 	unsigned int			   dd_record_fid_accessed:1,
 					   dd_rdonly:1;
+
+	/* BRW stats from OSD, set by OSD during init */
+	struct brw_stats		  *dd_brw_stats;
 
 	/* sysfs and debugfs handling */
 	struct dentry			  *dd_debugfs_entry;

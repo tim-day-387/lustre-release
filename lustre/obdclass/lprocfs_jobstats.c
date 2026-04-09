@@ -18,10 +18,6 @@
 
 #ifdef CONFIG_PROC_FS
 
-enum js_info_flags {
-	JS_EXPIRED,		/* job is timed out and schedule for removal */
-};
-
 #define JOB_CLEANUP_BATCH 1024
 /*
  * JobID formats & JobID environment variable names for supported
@@ -48,22 +44,6 @@ enum js_info_flags {
  *   JobID format:  Same as PBS.
  *   JobID env var: Same as PBS.
  */
-
-struct job_stat {
-	struct rb_node		js_idnode;	/* js_jobid sorted node */
-	struct rb_node		js_posnode;	/* pos sorted node */
-	struct list_head	js_lru;		/* on ojs_lru, with ojs_lock */
-	unsigned long		js_flags;	/* JS_* flags */
-	struct llist_node	js_deleted;	/* on ojs_deleted w/ojs_lock */
-	u64			js_pos_id;	/* pos for job stats seq file */
-	struct kref		js_refcount;	/* num users of this struct */
-	char			js_jobid[LUSTRE_JOBID_SIZE]; /* job name + NUL*/
-	ktime_t			js_time_init;	/* time of initial stat*/
-	ktime_t			js_time_latest;	/* time of most recent stat*/
-	struct lprocfs_stats	*js_stats;	/* per-job statistics */
-	struct obd_job_stats	*js_jobstats;	/* for accessing ojs_lock */
-	struct rcu_head		js_rcu;		/* RCU head for job_reclaim_rcu*/
-};
 
 static void job_reclaim_rcu(struct rcu_head *head)
 {

@@ -15,6 +15,7 @@
 #include <obd.h>
 #include <obd_target.h>
 #include <obd_cksum.h>
+#include <lustre_kernelcomm.h>
 #include "tgt_internal.h"
 #include "../ptlrpc/ptlrpc_internal.h"
 
@@ -834,11 +835,25 @@ int tgt_mod_init(void)
 
 	update_info_init();
 
+	result = lustre_target_nl_init();
+	if (result != 0) {
+		update_info_fini();
+		barrier_fini();
+		lu_context_key_degister(&tgt_thread_key);
+		lu_context_key_degister(&tgt_session_key);
+		if (tgt_page_to_corrupt != NULL)
+			put_page(tgt_page_to_corrupt);
+		lustre_tgt_unregister_fs();
+		lu_kmem_fini(tgt_caches);
+		RETURN(result);
+	}
+
 	RETURN(0);
 }
 
 void tgt_mod_exit(void)
 {
+	lustre_target_nl_fini();
 	barrier_fini();
 	if (tgt_page_to_corrupt != NULL)
 		put_page(tgt_page_to_corrupt);

@@ -239,6 +239,212 @@ enum lustre_health_attrs {
 
 #define LUSTRE_HEALTH_ATTR_MAX	(__LUSTRE_HEALTH_ATTR_MAX_PLUS_ONE - 1)
 
+/**
+ * enum lustre_recovery_attrs	      - Lustre recovery status netlink
+ *					attributes
+ *
+ * @LUSTRE_RECOVERY_ATTR_UNSPEC:	unspecified attribute to catch errors
+ * @LUSTRE_RECOVERY_ATTR_PAD:		padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_RECOVERY_ATTR_HDR:		recovery data header (NLA_NUL_STRING)
+ * @LUSTRE_RECOVERY_ATTR_SOURCE:	OBD device name (NLA_STRING)
+ * @LUSTRE_RECOVERY_ATTR_STATUS:	recovery state string (NLA_STRING)
+ * @LUSTRE_RECOVERY_ATTR_DURATION:	recovery duration in seconds (NLA_S64)
+ * @LUSTRE_RECOVERY_ATTR_TIME_REMAINING: seconds left in recovery (NLA_S64)
+ * @LUSTRE_RECOVERY_ATTR_CONNECTED_CLIENTS: connected client count (NLA_U32)
+ * @LUSTRE_RECOVERY_ATTR_COMPLETED_CLIENTS: completed client count (NLA_U32)
+ * @LUSTRE_RECOVERY_ATTR_EVICTED_CLIENTS: evicted client count (NLA_U32)
+ * @LUSTRE_RECOVERY_ATTR_MAX_CLIENTS:	max recoverable clients (NLA_U32)
+ * @LUSTRE_RECOVERY_ATTR_REPLAYED_REQUESTS: replayed request count (NLA_U32)
+ * @LUSTRE_RECOVERY_ATTR_QUEUED_REQUESTS: queued request count (NLA_U32)
+ * @LUSTRE_RECOVERY_ATTR_NEXT_TRANSNO:	next expected transaction (NLA_U64)
+ * @LUSTRE_RECOVERY_ATTR_VBR:		VBR enabled (NLA_U8, 1=enabled)
+ * @LUSTRE_RECOVERY_ATTR_IR:		IR enabled (NLA_U8, 1=enabled)
+ */
+enum lustre_recovery_attrs {
+	LUSTRE_RECOVERY_ATTR_UNSPEC		= 0,
+	LUSTRE_RECOVERY_ATTR_PAD		= LUSTRE_RECOVERY_ATTR_UNSPEC,
+
+	LUSTRE_RECOVERY_ATTR_HDR		= 1,
+	LUSTRE_RECOVERY_ATTR_SOURCE		= 2,
+	LUSTRE_RECOVERY_ATTR_STATUS		= 3,
+	LUSTRE_RECOVERY_ATTR_DURATION		= 4,
+	LUSTRE_RECOVERY_ATTR_TIME_REMAINING	= 5,
+	LUSTRE_RECOVERY_ATTR_CONNECTED_CLIENTS	= 6,
+	LUSTRE_RECOVERY_ATTR_COMPLETED_CLIENTS	= 7,
+	LUSTRE_RECOVERY_ATTR_EVICTED_CLIENTS	= 8,
+	LUSTRE_RECOVERY_ATTR_MAX_CLIENTS	= 9,
+	LUSTRE_RECOVERY_ATTR_REPLAYED_REQUESTS	= 10,
+	LUSTRE_RECOVERY_ATTR_QUEUED_REQUESTS	= 11,
+	LUSTRE_RECOVERY_ATTR_NEXT_TRANSNO	= 12,
+	LUSTRE_RECOVERY_ATTR_VBR		= 13,
+	LUSTRE_RECOVERY_ATTR_IR			= 14,
+
+	__LUSTRE_RECOVERY_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_RECOVERY_ATTR_MAX \
+	(__LUSTRE_RECOVERY_ATTR_MAX_PLUS_ONE - 1)
+
+/**
+ * enum lustre_obd_params_attrs	      - Lustre OBD scalar parameters
+ *					netlink attributes
+ *
+ * @LUSTRE_OBD_PARAMS_ATTR_UNSPEC:	unspecified attribute to catch errors
+ * @LUSTRE_OBD_PARAMS_ATTR_PAD:	padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_OBD_PARAMS_ATTR_HDR:	header (NLA_NUL_STRING)
+ * @LUSTRE_OBD_PARAMS_ATTR_SOURCE:	OBD device name (NLA_STRING)
+ * @LUSTRE_OBD_PARAMS_ATTR_CLASS:	device type name (NLA_STRING)
+ * @LUSTRE_OBD_PARAMS_ATTR_KBYTES_TOTAL: total space in KB (NLA_U64)
+ * @LUSTRE_OBD_PARAMS_ATTR_KBYTES_FREE: free space in KB (NLA_U64)
+ * @LUSTRE_OBD_PARAMS_ATTR_KBYTES_AVAIL: available space in KB (NLA_U64)
+ * @LUSTRE_OBD_PARAMS_ATTR_FILES_TOTAL: total inodes (NLA_U64)
+ * @LUSTRE_OBD_PARAMS_ATTR_FILES_FREE: free inodes (NLA_U64)
+ * @LUSTRE_OBD_PARAMS_ATTR_NUM_EXPORTS: connected export count (NLA_U32)
+ * @LUSTRE_OBD_PARAMS_ATTR_TOT_DIRTY: total dirty bytes (NLA_U64)
+ * @LUSTRE_OBD_PARAMS_ATTR_TOT_GRANTED: total granted bytes (NLA_U64)
+ * @LUSTRE_OBD_PARAMS_ATTR_TOT_PENDING: total pending bytes (NLA_U64)
+ */
+enum lustre_obd_params_attrs {
+	LUSTRE_OBD_PARAMS_ATTR_UNSPEC		= 0,
+	LUSTRE_OBD_PARAMS_ATTR_PAD		= LUSTRE_OBD_PARAMS_ATTR_UNSPEC,
+
+	LUSTRE_OBD_PARAMS_ATTR_HDR		= 1,
+	LUSTRE_OBD_PARAMS_ATTR_SOURCE		= 2,
+	LUSTRE_OBD_PARAMS_ATTR_CLASS		= 3,
+	LUSTRE_OBD_PARAMS_ATTR_KBYTES_TOTAL	= 4,
+	LUSTRE_OBD_PARAMS_ATTR_KBYTES_FREE	= 5,
+	LUSTRE_OBD_PARAMS_ATTR_KBYTES_AVAIL	= 6,
+	LUSTRE_OBD_PARAMS_ATTR_FILES_TOTAL	= 7,
+	LUSTRE_OBD_PARAMS_ATTR_FILES_FREE	= 8,
+	LUSTRE_OBD_PARAMS_ATTR_NUM_EXPORTS	= 9,
+	LUSTRE_OBD_PARAMS_ATTR_TOT_DIRTY	= 10,
+	LUSTRE_OBD_PARAMS_ATTR_TOT_GRANTED	= 11,
+	LUSTRE_OBD_PARAMS_ATTR_TOT_PENDING	= 12,
+
+	__LUSTRE_OBD_PARAMS_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_OBD_PARAMS_ATTR_MAX \
+	(__LUSTRE_OBD_PARAMS_ATTR_MAX_PLUS_ONE - 1)
+
+/**
+ * enum lustre_brw_stats_attrs	      - Lustre BRW histogram netlink
+ *					attributes
+ *
+ * @LUSTRE_BRW_STATS_ATTR_UNSPEC:	unspecified attribute to catch errors
+ * @LUSTRE_BRW_STATS_ATTR_PAD:		padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_BRW_STATS_ATTR_HDR:		header (NLA_NUL_STRING)
+ * @LUSTRE_BRW_STATS_ATTR_SOURCE:	OBD device name (NLA_STRING)
+ * @LUSTRE_BRW_STATS_ATTR_TIMESTAMP:	time of collection in nanoseconds
+ *					(NLA_S64)
+ * @LUSTRE_BRW_STATS_ATTR_HISTOGRAM:	one histogram category (NLA_NESTED)
+ */
+enum lustre_brw_stats_attrs {
+	LUSTRE_BRW_STATS_ATTR_UNSPEC		= 0,
+	LUSTRE_BRW_STATS_ATTR_PAD		= LUSTRE_BRW_STATS_ATTR_UNSPEC,
+
+	LUSTRE_BRW_STATS_ATTR_HDR		= 1,
+	LUSTRE_BRW_STATS_ATTR_SOURCE		= 2,
+	LUSTRE_BRW_STATS_ATTR_TIMESTAMP	= 3,
+	LUSTRE_BRW_STATS_ATTR_HISTOGRAM	= 4,
+
+	__LUSTRE_BRW_STATS_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_BRW_STATS_ATTR_MAX \
+	(__LUSTRE_BRW_STATS_ATTR_MAX_PLUS_ONE - 1)
+
+/**
+ * enum lustre_brw_hist_attrs	      - Lustre BRW histogram entry netlink
+ *					attributes (nested inside
+ *					LUSTRE_BRW_STATS_ATTR_HISTOGRAM)
+ *
+ * @LUSTRE_BRW_HIST_ATTR_UNSPEC:	unspecified attribute to catch errors
+ * @LUSTRE_BRW_HIST_ATTR_PAD:		padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_BRW_HIST_ATTR_NAME:		histogram category name (NLA_STRING)
+ * @LUSTRE_BRW_HIST_ATTR_UNITS:	bucket unit label (NLA_STRING)
+ * @LUSTRE_BRW_HIST_ATTR_READ:	read buckets (NLA_NESTED of NLA_U64)
+ * @LUSTRE_BRW_HIST_ATTR_WRITE:	write bucket values (NLA_NESTED of NLA_U64)
+ */
+enum lustre_brw_hist_attrs {
+	LUSTRE_BRW_HIST_ATTR_UNSPEC		= 0,
+	LUSTRE_BRW_HIST_ATTR_PAD		= LUSTRE_BRW_HIST_ATTR_UNSPEC,
+
+	LUSTRE_BRW_HIST_ATTR_NAME		= 1,
+	LUSTRE_BRW_HIST_ATTR_UNITS		= 2,
+	LUSTRE_BRW_HIST_ATTR_READ		= 3,
+	LUSTRE_BRW_HIST_ATTR_WRITE		= 4,
+
+	__LUSTRE_BRW_HIST_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_BRW_HIST_ATTR_MAX \
+	(__LUSTRE_BRW_HIST_ATTR_MAX_PLUS_ONE - 1)
+
+/**
+ * enum lustre_export_attrs	      - Lustre per-client export stats
+ *					netlink attributes
+ *
+ * @LUSTRE_EXPORT_ATTR_UNSPEC:		unspecified attribute to catch errors
+ * @LUSTRE_EXPORT_ATTR_PAD:		padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_EXPORT_ATTR_HDR:		header (NLA_NUL_STRING)
+ * @LUSTRE_EXPORT_ATTR_SOURCE:		OBD device name (NLA_STRING)
+ * @LUSTRE_EXPORT_ATTR_NID:		client NID string (NLA_STRING)
+ * @LUSTRE_EXPORT_ATTR_NODEMAP:		nodemap name for this NID (NLA_STRING)
+ * @LUSTRE_EXPORT_ATTR_DATASET:		counter data (NLA_NESTED)
+ */
+enum lustre_export_attrs {
+	LUSTRE_EXPORT_ATTR_UNSPEC	= 0,
+	LUSTRE_EXPORT_ATTR_PAD		= LUSTRE_EXPORT_ATTR_UNSPEC,
+
+	LUSTRE_EXPORT_ATTR_HDR		= 1,
+	LUSTRE_EXPORT_ATTR_SOURCE	= 2,
+	LUSTRE_EXPORT_ATTR_NID		= 3,
+	LUSTRE_EXPORT_ATTR_NODEMAP	= 4,
+	LUSTRE_EXPORT_ATTR_DATASET	= 5,
+
+	__LUSTRE_EXPORT_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_EXPORT_ATTR_MAX	(__LUSTRE_EXPORT_ATTR_MAX_PLUS_ONE - 1)
+
+/**
+ * enum lustre_job_stats_attrs	      - Lustre job stats netlink attributes
+ *
+ * @LUSTRE_JOB_STATS_ATTR_UNSPEC:	unspecified attribute to catch errors
+ * @LUSTRE_JOB_STATS_ATTR_PAD:		padding for 64-bit attributes, ignore
+ *
+ * @LUSTRE_JOB_STATS_ATTR_HDR:		header (NLA_NUL_STRING)
+ * @LUSTRE_JOB_STATS_ATTR_SOURCE:	OBD device name (NLA_STRING)
+ * @LUSTRE_JOB_STATS_ATTR_JOBID:	job identifier (NLA_STRING)
+ * @LUSTRE_JOB_STATS_ATTR_SNAPSHOT_TIME: time of last activity in ns (NLA_S64)
+ * @LUSTRE_JOB_STATS_ATTR_START_TIME:	job start time in ns (NLA_S64)
+ * @LUSTRE_JOB_STATS_ATTR_ELAPSED_TIME: elapsed time in ns (NLA_S64)
+ * @LUSTRE_JOB_STATS_ATTR_DATASET:	counter data (NLA_NESTED)
+ */
+enum lustre_job_stats_attrs {
+	LUSTRE_JOB_STATS_ATTR_UNSPEC		= 0,
+	LUSTRE_JOB_STATS_ATTR_PAD		= LUSTRE_JOB_STATS_ATTR_UNSPEC,
+
+	LUSTRE_JOB_STATS_ATTR_HDR		= 1,
+	LUSTRE_JOB_STATS_ATTR_SOURCE		= 2,
+	LUSTRE_JOB_STATS_ATTR_JOBID		= 3,
+	LUSTRE_JOB_STATS_ATTR_SNAPSHOT_TIME	= 4,
+	LUSTRE_JOB_STATS_ATTR_START_TIME	= 5,
+	LUSTRE_JOB_STATS_ATTR_ELAPSED_TIME	= 6,
+	LUSTRE_JOB_STATS_ATTR_DATASET		= 7,
+
+	__LUSTRE_JOB_STATS_ATTR_MAX_PLUS_ONE,
+};
+
+#define LUSTRE_JOB_STATS_ATTR_MAX \
+	(__LUSTRE_JOB_STATS_ATTR_MAX_PLUS_ONE - 1)
+
 /* prototype for callback function on kuc groups */
 typedef int (*libcfs_kkuc_cb_t)(void *data, void *cb_arg);
 
@@ -308,6 +514,11 @@ int lustre_nl_put_dataset(struct sk_buff *msg, struct lprocfs_stats *stats,
 
 extern struct genl_family lustre_family;
 extern const struct ln_key_list stats_dataset_list;
+
+#ifdef HAVE_SERVER_SUPPORT
+int lustre_target_nl_init(void);
+void lustre_target_nl_fini(void);
+#endif /* HAVE_SERVER_SUPPORT */
 
 #endif /* __LUSTRE_KERNELCOMM_H__ */
 
