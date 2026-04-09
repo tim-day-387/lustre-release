@@ -255,7 +255,7 @@ typedef struct statx lstatx_t;
 #define LUSTRE_EOF 0xffffffffffffffffULL
 
 /* for statfs() */
-#define LL_SUPER_MAGIC 0x0BD00BD0
+#define LL_SUPER_MAGIC 0x0BD00BD1
 
 #define LL_IOC_GETVERSION		_IOR('f', 3, long)
 #define FSFILT_IOC_GETVERSION		LL_IOC_GETVERSION /* backward compat */
