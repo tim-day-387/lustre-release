@@ -2108,6 +2108,8 @@ enum mds_op_bias {
 	MDS_NAMEHASH		= 1 << 27,
 	/* operation was pre-approved by client VFS (idmapped mount / userns) */
 	MDS_USERNS_BYPASS	= 1 << 28,
+	/* create whiteout at old name location atomically with rename */
+	MDS_RENAME_WHITEOUT	= 1 << 29,
 };
 
 #define MDS_CLOSE_INTENT (MDS_HSM_RELEASE | MDS_CLOSE_LAYOUT_SWAP |         \

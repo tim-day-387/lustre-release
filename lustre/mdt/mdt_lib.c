@@ -1776,6 +1776,7 @@ static int mdt_rename_unpack(struct mdt_thread_info *info)
 	if (rc < 0)
 		RETURN(rc);
 
+	spec->sp_rename_whiteout = !!(rec->rn_bias & MDS_RENAME_WHITEOUT);
 	spec->no_create = !!req_is_replay(mdt_info_req(info));
 
 	rc = req_check_sepol(pill);
