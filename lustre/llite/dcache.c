@@ -49,58 +49,6 @@ static void ll_release(struct dentry *de)
 }
 
 /**
- * ll_dcompare() - Compare if two dentries are the same. Don't match if the
- * existing dentry is marked invalid.
- * @dentry: directory which is being compared
- * @len: length
- * @str: name of directory being compared
- * @name: name and length (struct qstr) of directory being compared
- *
- * This avoids a race where ll_lookup_it() instantiates a dentry, but we get
- * an AST before calling d_revalidate_it().  The dentry still exists (marked
- * INVALID) so d_lookup() matches it, but we have no lock on it (so
- * lock_match() fails) and we spin around real_lookup().
- *
- * This race doesn't apply to lookups in d_alloc_parallel(), and for
- * those we want to ensure that only one dentry with a given name is
- * in ll_lookup_nd() at a time.  So allow invalid dentries to match
- * while d_in_lookup().  We will be called again when the lookup
- * completes, and can give a different answer then.
- *
- * Return:
- * * %0 - if the same
- * * %1 - if different
- */
-static int ll_dcompare(const struct dentry *dentry,
-		       unsigned int len, const char *str,
-		       const struct qstr *name)
-{
-	ENTRY;
-	if (len != name->len)
-		RETURN(1);
-
-	if (memcmp(str, name->name, len))
-		RETURN(1);
-
-	CDEBUG(D_DENTRY, "found name "DNAME"(%p) flags %#x refc %d\n",
-	       encode_fn_qstr(*name), dentry, dentry->d_flags,
-	       d_count(dentry));
-
-	/* mountpoint is always valid */
-	if (d_mountpoint((struct dentry *)dentry))
-		RETURN(0);
-
-	/* ensure exclusion against parallel lookup of the same name */
-	if (d_in_lookup((struct dentry *)dentry))
-		return 0;
-
-	if (d_lustre_invalid(dentry))
-		RETURN(1);
-
-	RETURN(0);
-}
-
-/**
  * ll_ddelete() - Called when last reference to a dentry is dropped
  *
  * @de: directory which is being deleted
@@ -279,6 +227,20 @@ static int ll_revalidate_dentry(
 	if (rc != 1)
 		return rc;
 
+	/* For negative dentries marked invalid, force a fresh lookup. We can
+	 * only definitively reject here when there is no inode; for positive
+	 * dentries we rely on the actual operation (open/getattr) to fail
+	 * with ENOENT against the server when the file is really gone.
+	 *
+	 * Returning 0 for a positive invalid dentry breaks Lustre as the
+	 * upper/lower of an overlayfs mount: ovl_revalidate_real() turns a
+	 * 0 from the underlying d_revalidate into -ESTALE which then
+	 * surfaces to userspace.
+	 */
+	if (d_lustre_invalid(dentry) && !dentry->d_inode &&
+	    !d_mountpoint(dentry) && !d_in_lookup(dentry))
+		return 0;
+
 	/* If this is intermediate component path lookup and were able to get to
 	 * this dentry, then its lock has not been revoked and the
 	 * path component is valid.
@@ -335,5 +297,4 @@ const struct dentry_operations ll_d_ops = {
 	.d_revalidate	= ll_revalidate_dentry,
 	.d_release	= ll_release,
 	.d_delete	= ll_ddelete,
-	.d_compare	= ll_dcompare,
 };
