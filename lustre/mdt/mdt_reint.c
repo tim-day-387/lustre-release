@@ -2776,6 +2776,81 @@ static int mdt_lock_two_dirs(struct mdt_thread_info *info,
 	return rc;
 }
 
+/**
+ * mdt_reint_whiteout() - create a whiteout at @name in @parent after rename.
+ * @info: MDT thread info
+ * @parent: source parent directory (already write-locked by rename handler)
+ * @name: source name that was just vacated by the rename
+ *
+ * Creates a character-device whiteout (major:minor 0:0) in @parent at @name.
+ * Called while the PDO write lock for @name in @parent is still held by the
+ * rename handler, so no additional MDT-level locking is needed here.
+ *
+ * Return: 0 on success, negative errno on failure.
+ */
+static int mdt_reint_whiteout(struct mdt_thread_info *info,
+			      struct mdt_object *parent,
+			      const struct lu_name *name)
+{
+	struct mdt_device *mdt = info->mti_mdt;
+	struct mdt_object *whiteout;
+	struct md_attr ma = {};
+	struct md_op_spec spec = {};
+	struct lu_fid wh_fid;
+	struct lu_device *next;
+	int rc;
+
+	ENTRY;
+
+	/* Allocate a new FID for the whiteout on the same MDT as the parent.
+	 * Pass the LOD-layer object (lu_object_next), not the MDT-layer object,
+	 * as lod_fid_alloc() asserts that the hint object is a LOD object.
+	 */
+	next = &mdt->mdt_child->md_lu_dev;
+	rc = next->ld_ops->ldo_fid_alloc(info->mti_env, next, &wh_fid,
+					  lu_object_next(&parent->mot_obj), name);
+	if (rc < 0)
+		RETURN(rc);
+	if (rc > 0)
+		rc = 0;
+
+	whiteout = mdt_object_new(info->mti_env, mdt, &wh_fid);
+	if (IS_ERR(whiteout))
+		RETURN(PTR_ERR(whiteout));
+
+	/*
+	 * Whiteout is a character device with major:minor 0:0 and no
+	 * permission bits set, matching the IS_WHITEOUT() VFS test.
+	 */
+	ma.ma_attr.la_mode = S_IFCHR | WHITEOUT_MODE;
+	ma.ma_attr.la_rdev = WHITEOUT_DEV;
+	ma.ma_attr.la_uid = mdt_ucred(info)->uc_fsuid;
+	ma.ma_attr.la_gid = mdt_ucred(info)->uc_fsgid;
+	ma.ma_attr.la_ctime = ktime_get_real_seconds();
+	ma.ma_attr.la_mtime = ma.ma_attr.la_ctime;
+	ma.ma_attr.la_atime = ma.ma_attr.la_ctime;
+	ma.ma_attr.la_valid = LA_MODE | LA_RDEV | LA_UID | LA_GID |
+			      LA_CTIME | LA_MTIME | LA_ATIME;
+	ma.ma_need = MA_INODE;
+
+	/*
+	 * The PDO write lock for @name in @parent is already held by the
+	 * rename handler; skip the MDD-level name lookup and permission check
+	 * (permission was already verified for the rename).
+	 */
+	spec.sp_cr_lookup = 0;
+	spec.sp_permitted = 1;
+
+	rc = mdo_create(info->mti_env, mdt_object_child(parent), name,
+			mdt_object_child(whiteout), &spec, &ma);
+	if (rc)
+		CERROR("%s: failed to create whiteout at "DNAME": rc = %d\n",
+		       mdt_obd_name(mdt), encode_fn_luname(name), rc);
+
+	mdt_object_put(info->mti_env, whiteout);
+	RETURN(rc);
+}
+
 /*
  * VBR: rename versions in reply: 0 - srcdir parent; 1 - tgtdir parent;
  * 2 - srcdir child; 3 - tgtdir child.
@@ -3223,6 +3298,10 @@ lock_bfl:
 		mdt_rename_counter_tally(info, info->mti_mdt, req,
 					 msrcdir, mtgtdir, msi,
 					 ktime_us_delta(ktime_get(), kstart));
+
+		/* Create whiteout at the old source location if requested */
+		if (info->mti_spec.sp_rename_whiteout)
+			rc = mdt_reint_whiteout(info, msrcdir, &rr->rr_name);
 	}
 
 	EXIT;

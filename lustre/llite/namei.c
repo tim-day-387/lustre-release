@@ -2476,7 +2476,7 @@ static int ll_rename(struct mnt_idmap *map,
 
 	ENTRY;
 
-	if (flags)
+	if (flags & ~RENAME_WHITEOUT)
 		GOTO(out, err = -EINVAL);
 
 	CDEBUG(D_VFSTRACE,
@@ -2506,6 +2506,9 @@ static int ll_rename(struct mnt_idmap *map,
 				     LUSTRE_OPC_ANY, NULL);
 	if (IS_ERR(op_data))
 		GOTO(out, err = PTR_ERR(op_data));
+
+	if (flags & RENAME_WHITEOUT)
+		op_data->op_bias |= MDS_RENAME_WHITEOUT;
 
 	/* If the client is using a subdir mount and does a rename to what it
 	 * sees as /.fscrypt, interpret it as the .fscrypt dir at fs root.
