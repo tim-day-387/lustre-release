@@ -2197,6 +2197,15 @@ static int ll_link(struct dentry *old_dentry, struct inode *dir,
 	if (err)
 		GOTO(out_put, err);
 
+	/* Bump nlink on the source inode to match the new entry, then attach
+	 * @src to @new_dentry. Without this, overlayfs's ovl_create_real()
+	 * trips WARN_ON(!newdentry->d_inode) after a successful upper-layer
+	 * link and propagates -EIO/-ESTALE to userspace.
+	 */
+	inc_nlink(src);
+	ihold(src);
+	d_instantiate(new_dentry, src);
+
 	ll_update_times(request, dir);
 	ll_stats_ops_tally(sbi, LPROC_LL_LINK,
 			   ktime_us_delta(ktime_get(), kstart));
