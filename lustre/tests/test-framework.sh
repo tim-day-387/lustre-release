@@ -1085,7 +1085,10 @@ load_lnet() {
 	unset MODOPTS_LIBCFS
 
 	set_default_debug "neterror net nettrace malloc"
-	if [[ $1 == config_on_load=1 ]]; then
+
+	if [[ "$NETTYPE" == "lo" ]]; then
+		load_module ../lnet/lnet/lnet networks="lo"
+	elif [[ $1 == config_on_load=1 ]]; then
 		load_module ../lnet/lnet/lnet
 	else
 		load_module ../lnet/lnet/lnet "$@"
@@ -1100,13 +1103,17 @@ load_lnet() {
 		tcp*)	LNETLND="socklnd/ksocklnd" ;;
 		kfi*)	LNETLND="kfilnd/kkfilnd" ;;
 		gni*)	LNETLND="gnilnd/kgnilnd" ;;
+		lo*)	LNETLND="lo" ;;
 		*)	local lnd="${NETTYPE%%[0-9]}lnd"
 			[ -f "$LNDPATH/$lnd/k$lnd.ko" ] &&
 				LNETLND="$lnd/k$lnd" ||
 				LNETLND="socklnd/ksocklnd"
 		esac
 	fi
-	load_module ../lnet/klnds/$LNETLND
+
+	if [ "$LNETLND" != "lo" ]; then
+		load_module ../lnet/klnds/$LNETLND
+	fi
 
 	if [[ $1 == config_on_load=1 ]]; then
 		if $FORCE_LARGE_NID; then
