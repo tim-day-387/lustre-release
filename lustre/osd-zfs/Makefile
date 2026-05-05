@@ -8,6 +8,7 @@ obj-m += osd_zfs.o
 osd_zfs-objs := osd_handler.o osd_lproc.o osd_quota.o
 osd_zfs-objs += osd_object.o osd_io.o osd_oi.o osd_xattr.o osd_index.o
 osd_zfs-objs += osd_scrub.o
+osd_zfs-objs += osd_import.o
 
 ifdef CONFIG_LUSTRE_FS_SPL
 ccflags-y += -include $(SPL_OBJ)/spl_config.h

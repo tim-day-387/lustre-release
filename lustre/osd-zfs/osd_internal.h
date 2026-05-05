@@ -1093,4 +1093,6 @@ osd_index_backup(const struct lu_env *env, struct osd_device *osd, bool backup)
 
 extern char osd_0copy_tag[];
 
+int osd_zfs_try_import_pool(const char *pool);
+
 #endif /* _OSD_INTERNAL_H */
