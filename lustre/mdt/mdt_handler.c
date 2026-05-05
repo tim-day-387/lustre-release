@@ -6726,7 +6726,7 @@ static int mdt_init0(const struct lu_env *env, struct mdt_device *m,
 	 * by default, otherwise, maybe got unexpected -EACCESS.
 	 */
 	if (m->mdt_opts.mo_acl)
-		identity_upcall = MDT_IDENTITY_UPCALL_PATH;
+		identity_upcall = "NONE";
 	m->mdt_identity_cache = upcall_cache_init(mdt_obd_name(m),
 						identity_upcall,
 						UC_IDCACHE_HASH_SIZE,
@@ -6743,7 +6743,7 @@ static int mdt_init0(const struct lu_env *env, struct mdt_device *m,
 	snprintf(cache_internal, sizeof(cache_internal), "%s_int",
 		 mdt_obd_name(m));
 	m->mdt_identity_cache_int = upcall_cache_init(cache_internal,
-						IDENTITY_UPCALL_INTERNAL,
+						identity_upcall,
 						UC_IDCACHE_HASH_SIZE,
 						1200, /* entry expire: 20 mn */
 						30, /* acquire expire: 30 s */
