@@ -957,6 +957,32 @@ static int osd_objset_open(struct osd_device *o)
 			     o->od_dt_dev.dd_rdonly ? B_TRUE : B_FALSE,
 			     B_TRUE, o, &o->od_os);
 
+	if (rc == -ENOENT) {
+		/*
+		 * The pool may not be imported yet (root filesystem boot).
+		 * Extract pool name from od_mntdev ("pool/dataset") and
+		 * try to import it, then retry the objset open.
+		 */
+		char *slash = strchr(o->od_mntdev, '/');
+
+		if (slash) {
+			char pool[128];
+			int len = slash - o->od_mntdev;
+
+			if (len < sizeof(pool)) {
+				memcpy(pool, o->od_mntdev, len);
+				pool[len] = '\0';
+				if (osd_zfs_try_import_pool(pool) == 0) {
+					rc = -osd_dmu_objset_own(o->od_mntdev,
+						DMU_OST_ZFS,
+						o->od_dt_dev.dd_rdonly ?
+							B_TRUE : B_FALSE,
+						B_TRUE, o, &o->od_os);
+				}
+			}
+		}
+	}
+
 	if (rc) {
 		CERROR("%s: can't open %s: rc = %d\n", o->od_svname,
 		       o->od_mntdev, rc);
@@ -1683,9 +1709,12 @@ static int __init osd_init(void)
 
 	rc = class_register_type(&osd_obd_device_ops, NULL, true,
 				 LUSTRE_OSD_ZFS_NAME, &osd_device_type);
-	if (rc)
+	if (rc) {
 		lu_kmem_fini(osd_caches);
-	return rc;
+		return rc;
+	}
+
+	return 0;
 }
 
 static void __exit osd_exit(void)
