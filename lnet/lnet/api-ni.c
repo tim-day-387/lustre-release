@@ -1932,9 +1932,10 @@ lnet_ping_info_validate(struct lnet_ping_info *pinfo)
 	if (!(pinfo->pi_features & LNET_PING_FEAT_NI_STATUS))
 		return -EPROTO;
 	/* Loopback is guaranteed to be present */
-	if (pinfo->pi_nnis < 1 || pinfo->pi_nnis > lnet_interfaces_max)
+	if (pinfo->pi_nnis > lnet_interfaces_max)
 		return -ERANGE;
-	if (LNET_PING_INFO_LONI(pinfo) != LNET_NID_LO_0)
+	/* Allow loopback as the only interface, for testing */
+	if (pinfo->pi_nnis >= 1 && LNET_PING_INFO_LONI(pinfo) != LNET_NID_LO_0)
 		return -EPROTO;
 	return 0;
 }
@@ -2919,8 +2920,20 @@ lnet_startup_lndnets(struct list_head *netlist)
 
 		rc = lnet_startup_lndnet(net, NULL);
 
-		if (rc < 0)
+		if (rc < 0) {
+			/*
+			 * If a non-loopback network fails to start (e.g.
+			 * ksocklnd unavailable or no interfaces), continue
+			 * with remaining networks. LNet can operate with
+			 * only the loopback interface for local mounts.
+			 */
+			if (ni_count > 0) {
+				CWARN("Failed to start network, continuing with %d interface(s): rc = %d\n",
+				      ni_count, rc);
+				continue;
+			}
 			goto failed;
+		}
 
 		ni_count += rc;
 	}

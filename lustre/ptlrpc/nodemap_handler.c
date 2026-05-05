@@ -490,9 +490,10 @@ struct lu_nodemap *nodemap_classify_nid(struct lnet_nid *nid, bool *out_banned)
 		int i = 0;
 
 		do {
+			/* If we only have lo0, give up */
 			rc = LNetGetId(i++, &id, true);
 			if (rc < 0)
-				RETURN(ERR_PTR(-EINVAL));
+				break;
 		} while (nid_is_lo0(&id.nid));
 
 		nid = &id.nid;

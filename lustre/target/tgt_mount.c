@@ -1207,9 +1207,6 @@ static int server_nid2radix(void *data, struct lnet_nid *nid)
 	struct nid_fetch_data *nfd = data;
 	struct lnet_nid *tmp;
 
-	if (nid_is_lo0(nid))
-		return 0;
-
 	/* skip IPv6 NIDs for an old server */
 	if (!nid_is_nid4(nid)) {
 		if (nfd->nfd_skip_ipv6)
