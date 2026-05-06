@@ -11,6 +11,7 @@
 
 #include <linux/kprobes.h>
 #include <linux/memcontrol.h>
+#include <lustre_compat/linux/dcache.h>
 #include <lustre_compat/linux/mm.h>
 #include <lustre_compat/linux/security.h>
 #include <lustre_compat/linux/vmalloc.h>
@@ -135,6 +136,16 @@ unsigned int compat_account_page_dirtied(struct page *page,
 EXPORT_SYMBOL(compat_account_page_dirtied);
 #endif
 
+#ifndef HAVE_D_EXCHANGE_EXPORT
+static void (*__d_exchange)(struct dentry *dentry1, struct dentry *dentry2);
+
+void compat_d_exchange(struct dentry *dentry1, struct dentry *dentry2)
+{
+	__d_exchange(dentry1, dentry2);
+}
+EXPORT_SYMBOL(compat_d_exchange);
+#endif
+
 int lustre_symbols_init(void)
 {
 	int rc;
@@ -171,6 +182,11 @@ int lustre_symbols_init(void)
 #if !defined(HAVE_ACCOUNT_PAGE_DIRTIED_EXPORT) && defined(HAVE_ACCOUNT_PAGE_DIRTIED)
 	__account_page_dirtied = cfs_kallsyms_lookup_name("account_page_dirtied");
 	if (!__account_page_dirtied)
+		return -EINVAL;
+#endif
+#ifndef HAVE_D_EXCHANGE_EXPORT
+	__d_exchange = cfs_kallsyms_lookup_name("d_exchange");
+	if (!__d_exchange)
 		return -EINVAL;
 #endif
 #ifdef CONFIG_SECURITY

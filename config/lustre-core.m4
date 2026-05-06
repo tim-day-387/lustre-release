@@ -604,6 +604,19 @@ LB_CHECK_EXPORT([account_page_dirtied], [mm/page-writeback.c],
 ]) # LC_ACCOUNT_PAGE_DIRTIED
 
 #
+# LC_HAVE_D_EXCHANGE_EXPORT
+#
+# Linux commit v6.18-rc1 a19239ba14525
+#   afs: Add support for RENAME_NOREPLACE and RENAME_EXCHANGE
+# exported d_exchange() to modules.
+#
+AC_DEFUN([LC_HAVE_D_EXCHANGE_EXPORT], [
+LB_CHECK_EXPORT([d_exchange], [fs/dcache.c],
+	[AC_DEFINE(HAVE_D_EXCHANGE_EXPORT, 1,
+			[d_exchange is exported])])
+]) # LC_HAVE_D_EXCHANGE_EXPORT
+
+#
 # LC_KEYRING_SEARCH_4ARGS
 #
 # Kernel 5.2 commit dcf49dbc8077
@@ -4093,6 +4106,9 @@ AC_DEFUN([LC_PROG_LINUX], [
 
 	# 6.0 - Check export
 	LC_HAVE_ADD_TO_PAGE_CACHE_LOCKED
+
+	# 6.18 - Check export
+	LC_HAVE_D_EXCHANGE_EXPORT
 
 ]) # LC_PROG_LINUX
 

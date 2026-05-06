@@ -17,4 +17,10 @@
 #define QSTR_LEN(name, len) ((struct qstr)QSTR_INIT((name), (len)))
 #endif
 
+#ifndef HAVE_D_EXCHANGE_EXPORT
+void compat_d_exchange(struct dentry *dentry1, struct dentry *dentry2);
+#else
+#define compat_d_exchange	d_exchange
+#endif
+
 #endif /* __LIBCFS_LINUX_DCACHE_H__ */
