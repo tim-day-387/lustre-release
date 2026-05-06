@@ -2481,6 +2481,143 @@ out:
 	RETURN(rc);
 }
 
+/*
+ * Issue one MDC rename RPC for @src_dir/@src_name -> @tgt_dir/@tgt_name.
+ * Used both for the regular rename path and as a building block for the
+ * RENAME_EXCHANGE emulation in ll_rename_exchange().
+ */
+static int ll_md_rename_one(struct mnt_idmap *map,
+			    struct inode *src_dir, const struct qstr *src_name,
+			    struct inode *src_inode,
+			    struct inode *tgt_dir, const struct qstr *tgt_name,
+			    struct inode *tgt_inode)
+{
+	struct ll_sb_info *sbi = ll_i2sbi(src_dir);
+	struct ptlrpc_request *request = NULL;
+	struct llcrypt_name foldname, fnewname;
+	struct md_op_data *op_data;
+	umode_t mode = 0;
+	int rc;
+
+	if (src_inode)
+		mode = src_inode->i_mode;
+	if (tgt_inode)
+		mode = tgt_inode->i_mode;
+
+	op_data = ll_prep_md_op_data(NULL, src_dir, tgt_dir, NULL, 0, mode,
+				     LUSTRE_OPC_ANY, NULL);
+	if (IS_ERR(op_data))
+		return PTR_ERR(op_data);
+
+	op_data->op_idmap = map;
+	if (src_inode)
+		op_data->op_fid3 = *ll_inode2fid(src_inode);
+	if (tgt_inode)
+		op_data->op_fid4 = *ll_inode2fid(tgt_inode);
+
+	rc = ll_setup_filename(src_dir, src_name, 1, &foldname, NULL);
+	if (rc) {
+		ll_finish_md_op_data(op_data);
+		return rc;
+	}
+	rc = ll_setup_filename(tgt_dir, tgt_name, 1, &fnewname, NULL);
+	if (rc) {
+		llcrypt_free_filename(&foldname);
+		ll_finish_md_op_data(op_data);
+		return rc;
+	}
+
+	rc = md_rename(sbi->ll_md_exp, op_data,
+		       foldname.disk_name.name, foldname.disk_name.len,
+		       fnewname.disk_name.name, fnewname.disk_name.len,
+		       &request);
+	llcrypt_free_filename(&foldname);
+	llcrypt_free_filename(&fnewname);
+	ll_finish_md_op_data(op_data);
+	if (!rc) {
+		ll_update_times(request, src_dir);
+		if (tgt_dir != src_dir)
+			ll_update_times(request, tgt_dir);
+	}
+	ptlrpc_req_put(request);
+	return rc;
+}
+
+/*
+ * Emulate RENAME_EXCHANGE by performing three sequential renames through a
+ * temporary name in the target directory:
+ *
+ *   1) tgt_dir/tgt_name  -> tgt_dir/temp
+ *   2) src_dir/src_name  -> tgt_dir/tgt_name
+ *   3) tgt_dir/temp      -> src_dir/src_name
+ *
+ * The MDS does not support an atomic exchange opcode, but overlayfs needs
+ * RENAME_EXCHANGE to clear whiteouts when removing a directory that has been
+ * copied up (ovl_clear_empty/ovl_cleanup_and_whiteout). Without this, rmdir
+ * of a copied-up directory containing whiteouts fails with -EINVAL on the
+ * underlying rename.
+ *
+ * On step failure we attempt a best-effort rollback so that on error the
+ * directory tree is left in its original state. A failed rollback is logged
+ * but cannot be remediated here.
+ */
+static int ll_rename_exchange(struct mnt_idmap *map,
+			      struct inode *src, struct dentry *src_dchild,
+			      struct inode *tgt, struct dentry *tgt_dchild)
+{
+	static atomic_t xchg_seq = ATOMIC_INIT(0);
+	char tempname[64];
+	struct qstr tempqstr;
+	int rc, rc2;
+
+	if (!src_dchild->d_inode || !tgt_dchild->d_inode)
+		return -ENOENT;
+
+	tempqstr.len = snprintf(tempname, sizeof(tempname),
+				".lustre_xchg_%llx_%x",
+				(unsigned long long)ktime_get_ns(),
+				atomic_inc_return(&xchg_seq));
+	tempqstr.name = tempname;
+
+	rc = ll_md_rename_one(map, tgt, &tgt_dchild->d_name, tgt_dchild->d_inode,
+			      tgt, &tempqstr, NULL);
+	if (rc)
+		return rc;
+
+	rc = ll_md_rename_one(map, src, &src_dchild->d_name, src_dchild->d_inode,
+			      tgt, &tgt_dchild->d_name, NULL);
+	if (rc) {
+		rc2 = ll_md_rename_one(map, tgt, &tempqstr, tgt_dchild->d_inode,
+				       tgt, &tgt_dchild->d_name, NULL);
+		if (rc2)
+			CERROR("%s: rename exchange rollback (step 1) failed: rc=%d, leaked temp name '%s'\n",
+			       ll_i2sbi(src)->ll_fsname, rc2, tempname);
+		return rc;
+	}
+
+	rc = ll_md_rename_one(map, tgt, &tempqstr, tgt_dchild->d_inode,
+			      src, &src_dchild->d_name, NULL);
+	if (rc) {
+		rc2 = ll_md_rename_one(map, tgt, &tgt_dchild->d_name,
+				       src_dchild->d_inode,
+				       src, &src_dchild->d_name, NULL);
+		if (rc2) {
+			CERROR("%s: rename exchange rollback (step 2) failed: rc=%d, leaked temp name '%s'\n",
+			       ll_i2sbi(src)->ll_fsname, rc2, tempname);
+			return rc;
+		}
+		rc2 = ll_md_rename_one(map, tgt, &tempqstr, tgt_dchild->d_inode,
+				       tgt, &tgt_dchild->d_name, NULL);
+		if (rc2)
+			CERROR("%s: rename exchange rollback (step 1) failed: rc=%d, leaked temp name '%s'\n",
+			       ll_i2sbi(src)->ll_fsname, rc2, tempname);
+		return rc;
+	}
+
+	d_exchange(src_dchild, tgt_dchild);
+	return 0;
+}
+
 static int ll_rename(struct mnt_idmap *map,
 		     struct inode *src, struct dentry *src_dchild,
 		     struct inode *tgt, struct dentry *tgt_dchild,
@@ -2496,7 +2633,10 @@ static int ll_rename(struct mnt_idmap *map,
 
 	ENTRY;
 
-	if (flags & ~RENAME_WHITEOUT)
+	if (flags & ~(RENAME_WHITEOUT | RENAME_EXCHANGE))
+		GOTO(out, err = -EINVAL);
+
+	if ((flags & RENAME_EXCHANGE) && (flags & RENAME_WHITEOUT))
 		GOTO(out, err = -EINVAL);
 
 	CDEBUG(D_VFSTRACE,
@@ -2515,6 +2655,14 @@ static int ll_rename(struct mnt_idmap *map,
 	 */
 	if (IS_ENCRYPTED(src) && !IS_ENCRYPTED(tgt))
 		GOTO(out, err = -EXDEV);
+
+	if (flags & RENAME_EXCHANGE) {
+		err = ll_rename_exchange(map, src, src_dchild, tgt, tgt_dchild);
+		if (!err)
+			ll_stats_ops_tally(sbi, LPROC_LL_RENAME,
+					   ktime_us_delta(ktime_get(), kstart));
+		GOTO(out, err);
+	}
 
 	if (src_dchild->d_inode)
 		mode = src_dchild->d_inode->i_mode;
