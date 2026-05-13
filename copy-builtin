@@ -330,6 +330,7 @@ function swap_all_symbols() {
     swap_symbols compat_free_workqueue_attrs free_workqueue_attrs
     swap_symbols compat_module_init module_init
     swap_symbols compat_module_exit module_exit
+    swap_symbols compat_d_exchange d_exchange
     swap_headers
 }
 
