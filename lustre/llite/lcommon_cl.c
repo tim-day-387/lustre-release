@@ -46,7 +46,8 @@ __u16 cl_inode_fini_refcheck;
 static DEFINE_MUTEX(cl_inode_fini_guard);
 
 int cl_setattr_ost(struct inode *inode, const struct iattr *attr,
-		   enum op_xvalid xvalid, unsigned int attr_flags)
+		   enum op_xvalid xvalid, unsigned int attr_flags,
+		   struct mnt_idmap *idmap)
 {
 	struct cl_object *obj;
 	struct lu_env *env;
@@ -76,9 +77,9 @@ int cl_setattr_ost(struct inode *inode, const struct iattr *attr,
 	if (attr->ia_valid & ATTR_SIZE) {
 		io->u.ci_setattr.sa_subtype = CL_SETATTR_TRUNC;
 		io->u.ci_setattr.sa_attr_uid =
-			from_kuid(&init_user_ns, current_uid());
+			lustre_current_fsuid(idmap, i_user_ns(inode));
 		io->u.ci_setattr.sa_attr_gid =
-			from_kgid(&init_user_ns, current_gid());
+			lustre_current_fsgid(idmap, i_user_ns(inode));
 		io->u.ci_setattr.sa_attr_projid = ll_i2info(inode)->lli_projid;
 	}
 again:

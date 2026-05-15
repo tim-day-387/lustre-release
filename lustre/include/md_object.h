@@ -686,6 +686,7 @@ struct lu_ucred {
 	char			 uc_jobid[LUSTRE_JOBID_SIZE];
 	struct lnet_nid		 uc_nid;
 	bool			 uc_enable_audit;
+	unsigned int		 uc_trust_client_perms:1;
 	unsigned int		 uc_rbac_file_perms:1;
 	unsigned int		 uc_rbac_dne_ops:1;
 	unsigned int		 uc_rbac_quota_ops:1;

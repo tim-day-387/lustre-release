@@ -1800,6 +1800,25 @@ static const struct cl_io_operations vvp_io_ops = {
 	.cio_read_ahead_prep	= vvp_io_read_ahead_prep,
 };
 
+/* Snapshot the caller's jobid/uid/gid into the inode for the OSC to pick up
+ * when packing the next BRW. @idmap maps the caller's fsuid/fsgid into
+ * init_user_ns so OST quota and stats are charged to the cluster-wide
+ * identity, not the userns-local one. NULL idmap == identity.
+ */
+void ll_io_set_jobinfo(struct inode *inode, struct mnt_idmap *idmap)
+{
+	struct ll_inode_info *lli = ll_i2info(inode);
+	struct job_info ji;
+
+	lustre_get_jobid(ji.ji_jobid, sizeof(ji.ji_jobid));
+	ji.ji_uid = lustre_current_fsuid(idmap, i_user_ns(inode));
+	ji.ji_gid = lustre_current_fsgid(idmap, i_user_ns(inode));
+
+	write_seqlock(&lli->lli_jobinfo_seqlock);
+	memcpy(&lli->lli_jobinfo, &ji, sizeof(ji));
+	write_sequnlock(&lli->lli_jobinfo_seqlock);
+}
+
 int vvp_io_init(const struct lu_env *env, struct cl_object *obj,
 		struct cl_io *io)
 {
@@ -1820,11 +1839,8 @@ int vvp_io_init(const struct lu_env *env, struct cl_object *obj,
 	vio->vui_ra_valid = false;
 	result = 0;
 	if (io->ci_type == CIT_READ || io->ci_type == CIT_WRITE) {
-		size_t bytes;
-		struct ll_inode_info *lli = ll_i2info(inode);
-		struct job_info ji;
+		size_t bytes = io->u.ci_rw.crw_bytes;
 
-		bytes = io->u.ci_rw.crw_bytes;
 		/* "If nbyte is 0, read() will return 0 and have no other
 		 *  results."  -- Single Unix Spec
 		 */
@@ -1832,21 +1848,6 @@ int vvp_io_init(const struct lu_env *env, struct cl_object *obj,
 			result = 1;
 		else
 			vio->vui_tot_bytes = bytes;
-
-		/* this might sleep */
-		lustre_get_jobid(ji.ji_jobid, sizeof(ji.ji_jobid));
-		ji.ji_uid = from_kuid(&init_user_ns, current_uid());
-		ji.ji_gid = from_kgid(&init_user_ns, current_gid());
-
-		/* for read/write, we store the process jobid/gid/uid in the
-		 * inode, and it'll be fetched by osc when building RPC.
-		 *
-		 * it's not accurate if the file is shared by different
-		 * jobs/user/group.
-		 */
-		write_seqlock(&lli->lli_jobinfo_seqlock);
-		memcpy(&lli->lli_jobinfo, &ji, sizeof(ji));
-		write_sequnlock(&lli->lli_jobinfo_seqlock);
 	} else if (io->ci_type == CIT_SETATTR) {
 		if (!cl_io_is_trunc(io))
 			io->ci_lockreq = CILR_MANDATORY;

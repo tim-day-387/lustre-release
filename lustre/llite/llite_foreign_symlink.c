@@ -725,8 +725,13 @@ static int ll_foreign_symlink_getattr(
 				      struct kstat *stat, u32 request_mask,
 				      unsigned int flags)
 {
-	return ll_getattr_dentry(path->dentry, stat, request_mask, flags,
-				 true);
+	return ll_getattr_dentry(
+#if defined(HAVE_USER_NAMESPACE_ARG)
+			map,
+#else
+			&nop_mnt_idmap,
+#endif
+			path->dentry, stat, request_mask, flags, true);
 }
 
 struct inode_operations ll_foreign_file_symlink_inode_operations = {

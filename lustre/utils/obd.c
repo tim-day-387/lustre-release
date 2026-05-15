@@ -5273,6 +5273,8 @@ int jt_nodemap_modify(int argc, char **argv)
 		cmd = LCFG_NODEMAP_DENY_MOUNT;
 	} else if (strcmp("gssonly_identification", param) == 0) {
 		cmd = LCFG_NODEMAP_GSS_IDENTIFY;
+	} else if (strcmp("trust_client_perms", param) == 0) {
+		cmd = LCFG_NODEMAP_TRUST_CLIENT_PERMS;
 	} else {
 		fprintf(stderr,
 			"error: %s: nodemap_modify invalid property: %s\n",
@@ -5377,6 +5379,8 @@ int jt_nodemap_info(int argc, char **argv)
 		{ "squash_gid", "GID for unmapped users" },
 		{ "squash_projid", "project ID for unmapped projects" },
 		{ "squash_uid", "UID for unmapped users" },
+		{ "trust_client_perms",
+		  "trust client POSIX permissions; MDS skips re-checks" },
 		{ "trusted_nodemap",
 		  "accept client identities without mapping" },
 	};

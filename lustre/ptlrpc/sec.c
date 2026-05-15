@@ -2891,17 +2891,19 @@ int sptlrpc_current_user_desc_size(void)
 }
 EXPORT_SYMBOL(sptlrpc_current_user_desc_size);
 
-int sptlrpc_pack_user_desc(struct lustre_msg *msg, int offset)
+int sptlrpc_pack_user_desc(struct lustre_msg *msg, int offset,
+			   struct mnt_idmap *idmap)
 {
 	struct ptlrpc_user_desc *pud;
+	struct mnt_idmap *map = idmap ?: &nop_mnt_idmap;
 	int ngroups;
 
 	pud = lustre_msg_buf(msg, offset, 0);
 
-	pud->pud_uid = from_kuid(&init_user_ns, current_uid());
-	pud->pud_gid = from_kgid(&init_user_ns, current_gid());
-	pud->pud_fsuid = from_kuid(&init_user_ns, current_fsuid());
-	pud->pud_fsgid = from_kgid(&init_user_ns, current_fsgid());
+	pud->pud_uid = lustre_current_fsuid(map, NULL);
+	pud->pud_gid = lustre_current_fsgid(map, NULL);
+	pud->pud_fsuid = lustre_current_fsuid(map, NULL);
+	pud->pud_fsgid = lustre_current_fsgid(map, NULL);
 	pud->pud_cap = ll_capability_u32(current_cap());
 	pud->pud_ngroups = (msg->lm_buflens[offset] - sizeof(*pud)) / 4;
 

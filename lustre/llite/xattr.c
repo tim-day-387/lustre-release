@@ -171,7 +171,7 @@ static int ll_xattr_set_common(const struct xattr_handler *handler,
 
 	rc = md_setxattr(sbi->ll_md_exp, ll_inode2fid(inode), valid, fullname,
 			 pv, size, flags, ll_i2suppgid(inode),
-			 ll_i2projid(inode), &req);
+			 ll_i2projid(inode), map, &req);
 	kfree(fullname);
 	if (rc) {
 		if (rc == -EOPNOTSUPP && handler->flags == XATTR_USER_T) {
@@ -470,7 +470,7 @@ out:
 }
 
 int ll_xattr_list(struct inode *inode, const char *name, int type, void *buffer,
-		  size_t size, u64 valid)
+		  size_t size, u64 valid, struct mnt_idmap *idmap)
 {
 	struct ll_inode_info *lli = ll_i2info(inode);
 	struct ll_sb_info *sbi = ll_i2sbi(inode);
@@ -511,7 +511,7 @@ int ll_xattr_list(struct inode *inode, const char *name, int type, void *buffer,
 	} else {
 getxattr_nocache:
 		rc = md_getxattr(sbi->ll_md_exp, ll_inode2fid(inode), valid,
-				 name, size, ll_i2projid(inode), &req);
+				 name, size, ll_i2projid(inode), idmap, &req);
 		if (rc < 0)
 			GOTO(out_xattr, rc);
 
@@ -605,7 +605,7 @@ out_acl:
 		RETURN(-ENOMEM);
 
 	rc = ll_xattr_list(inode, fullname, handler->flags, buffer, size,
-			   OBD_MD_FLXATTR);
+			   OBD_MD_FLXATTR, NULL);
 	kfree(fullname);
 	ll_stats_ops_tally(ll_i2sbi(inode), LPROC_LL_GETXATTR,
 			   ktime_us_delta(ktime_get(), kstart));
@@ -765,7 +765,7 @@ ssize_t ll_listxattr(struct dentry *dentry, char *buffer, size_t size)
 	       PFID(ll_inode2fid(inode)), inode);
 
 	rc = ll_xattr_list(inode, NULL, XATTR_OTHER_T, buffer, size,
-			   OBD_MD_FLXATTRLS);
+			   OBD_MD_FLXATTRLS, NULL);
 	if (rc < 0)
 		RETURN(rc);
 

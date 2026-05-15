@@ -171,10 +171,20 @@ static void ucred_set_rbac_roles(struct mdt_thread_info *info,
 	struct lu_nodemap *nodemap = NULL;
 	enum nodemap_rbac_roles rbac = NODEMAP_RBAC_ALL;
 
+	/* Default to trusting the client's POSIX decision when no nodemap
+	 * is in force (nodemap subsystem disabled, or no nodemap on the
+	 * export). This matches the rbac=ALL default above and preserves
+	 * the pre-trust_client_perms behaviour for idmapped-mount and
+	 * userns operations where the kernel client has already done the
+	 * authoritative check.
+	 */
+	uc->uc_trust_client_perms = 1;
 	if (info && info->mti_exp) {
 		nodemap = nodemap_get_from_exp(info->mti_exp);
 		if (!IS_ERR_OR_NULL(nodemap)) {
 			rbac = nodemap->nmf_rbac;
+			uc->uc_trust_client_perms =
+				nodemap->nmf_trust_client_perms;
 			nodemap_putref(nodemap);
 		}
 	}

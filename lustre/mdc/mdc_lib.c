@@ -36,15 +36,15 @@ static void set_mrc_cr_flags(struct mdt_rec_create *mrc,
 	mrc->cr_flags_h = (__u32)(flags >> 32);
 }
 
-static void __mdc_pack_body(struct mdt_body *b, __u32 suppgid)
+static void __mdc_pack_body(struct mdt_body *b, __u32 suppgid,
+			    struct mnt_idmap *idmap)
 {
 	LASSERT(b);
-
 	b->mbo_suppgid = suppgid;
-	b->mbo_uid = from_kuid(&init_user_ns, current_uid());
-	b->mbo_gid = from_kgid(&init_user_ns, current_gid());
-	b->mbo_fsuid = from_kuid(&init_user_ns, current_fsuid());
-	b->mbo_fsgid = from_kgid(&init_user_ns, current_fsgid());
+	b->mbo_uid = lustre_current_fsuid(idmap, NULL);
+	b->mbo_gid = lustre_current_fsgid(idmap, NULL);
+	b->mbo_fsuid = lustre_current_fsuid(idmap, NULL);
+	b->mbo_fsgid = lustre_current_fsgid(idmap, NULL);
 	b->mbo_capability = ll_capability_u32(current_cap());
 }
 
@@ -53,7 +53,7 @@ void mdc_swap_layouts_pack(struct req_capsule *pill,
 {
 	struct mdt_body *b = req_capsule_client_get(pill, &RMF_MDT_BODY);
 
-	__mdc_pack_body(b, op_data->op_suppgids[0]);
+	__mdc_pack_body(b, op_data->op_suppgids[0], op_data->op_idmap);
 	b->mbo_fid1 = op_data->op_fid1;
 	b->mbo_fid2 = op_data->op_fid2;
 	b->mbo_valid |= OBD_MD_FLID;
@@ -61,7 +61,7 @@ void mdc_swap_layouts_pack(struct req_capsule *pill,
 
 void mdc_pack_body(struct req_capsule *pill, const struct lu_fid *fid,
 		   u64 valid, size_t ea_size, u32 suppgid, u32 flags,
-		   u32 projid)
+		   u32 projid, struct mnt_idmap *idmap)
 {
 	struct mdt_body *b = req_capsule_client_get(pill, &RMF_MDT_BODY);
 
@@ -69,7 +69,7 @@ void mdc_pack_body(struct req_capsule *pill, const struct lu_fid *fid,
 	b->mbo_valid = valid;
 	b->mbo_eadatasize = ea_size;
 	b->mbo_flags = flags;
-	__mdc_pack_body(b, suppgid);
+	__mdc_pack_body(b, suppgid, idmap);
 	if (fid) {
 		b->mbo_fid1 = *fid;
 		b->mbo_valid |= OBD_MD_FLID;
@@ -175,7 +175,7 @@ void mdc_file_sepol_pack(struct req_capsule *pill, struct sptlrpc_sepol *p)
 }
 
 void mdc_readdir_pack(struct req_capsule *pill, __u64 pgoff, size_t size,
-		      const struct lu_fid *fid)
+		      const struct lu_fid *fid, struct mnt_idmap *idmap)
 {
 	struct mdt_body *b = req_capsule_client_get(pill, &RMF_MDT_BODY);
 
@@ -183,7 +183,7 @@ void mdc_readdir_pack(struct req_capsule *pill, __u64 pgoff, size_t size,
 	b->mbo_valid |= OBD_MD_FLID;
 	b->mbo_size = pgoff;			/* !! */
 	b->mbo_nlink = size;			/* !! */
-	__mdc_pack_body(b, -1);
+	__mdc_pack_body(b, -1, idmap);
 	b->mbo_mode = LUDA_FID | LUDA_TYPE;
 }
 
@@ -296,55 +296,52 @@ void mdc_open_pack(struct req_capsule *pill, struct md_op_data *op_data,
 
 	BUILD_BUG_ON(sizeof(struct mdt_rec_reint) !=
 		     sizeof(struct mdt_rec_create));
+	LASSERT(op_data != NULL);
 	rec = req_capsule_client_get(pill, &RMF_REC_REINT);
 
 	/* XXX do something about time, uid, gid */
 	rec->cr_opcode = REINT_OPEN;
-	rec->cr_fsuid	= from_kuid(&init_user_ns, current_fsuid());
-	rec->cr_fsgid	= from_kgid(&init_user_ns, current_fsgid());
+	rec->cr_fsuid = lustre_current_fsuid(op_data->op_idmap, NULL);
+	rec->cr_fsgid = lustre_current_fsgid(op_data->op_idmap, NULL);
 	rec->cr_cap = ll_capability_u32(current_cap());
 	rec->cr_mode   = mode;
 	cr_flags	= mds_pack_open_flags(flags);
 	rec->cr_rdev   = rdev;
 	rec->cr_umask  = current_umask();
-	if (op_data != NULL) {
-		rec->cr_fid1       = op_data->op_fid1;
-		rec->cr_fid2       = op_data->op_fid2;
-		rec->cr_time       = op_data->op_mod_time;
-		rec->cr_suppgid1   = op_data->op_suppgids[0];
-		rec->cr_suppgid2   = op_data->op_suppgids[1];
-		rec->cr_bias       = op_data->op_bias;
-		rec->cr_open_handle_old = op_data->op_open_handle;
+	rec->cr_fid1       = op_data->op_fid1;
+	rec->cr_fid2       = op_data->op_fid2;
+	rec->cr_time       = op_data->op_mod_time;
+	rec->cr_suppgid1   = op_data->op_suppgids[0];
+	rec->cr_suppgid2   = op_data->op_suppgids[1];
+	rec->cr_bias       = op_data->op_bias;
+	rec->cr_open_handle_old = op_data->op_open_handle;
 
-		if (op_data->op_name) {
-			mdc_pack_name(pill, &RMF_NAME, op_data->op_name,
-				      op_data->op_namelen);
+	if (op_data->op_name) {
+		mdc_pack_name(pill, &RMF_NAME, op_data->op_name,
+			      op_data->op_namelen);
 
-			if (op_data->op_bias & MDS_CREATE_VOLATILE)
-				cr_flags |= MDS_OPEN_VOLATILE;
-		}
-
-		mdc_file_secctx_pack(pill, op_data->op_file_secctx_name,
-				     op_data->op_file_secctx,
-				     op_data->op_file_secctx_size);
-
-		mdc_file_encctx_pack(pill, op_data->op_file_encctx,
-				     op_data->op_file_encctx_size);
-
-		/* pack SELinux policy info if any */
-		mdc_file_sepol_pack(pill, sepol);
-
-		rec->cr_layout_ver = op_data->op_layout_version;
+		if (op_data->op_bias & MDS_CREATE_VOLATILE)
+			cr_flags |= MDS_OPEN_VOLATILE;
 	}
+
+	mdc_file_secctx_pack(pill, op_data->op_file_secctx_name,
+			     op_data->op_file_secctx,
+			     op_data->op_file_secctx_size);
+
+	mdc_file_encctx_pack(pill, op_data->op_file_encctx,
+			     op_data->op_file_encctx_size);
+
+	/* pack SELinux policy info if any */
+	mdc_file_sepol_pack(pill, sepol);
+
+	rec->cr_layout_ver = op_data->op_layout_version;
 
 	if (lmm) {
 		cr_flags |= MDS_OPEN_HAS_EA;
 		tmp = req_capsule_client_get(pill, &RMF_EADATA);
 		memcpy(tmp, lmm, lmmlen);
-		if (cr_flags & MDS_OPEN_PCC) {
-			LASSERT(op_data != NULL);
+		if (cr_flags & MDS_OPEN_PCC)
 			rec->cr_archive_id = op_data->op_archive_id;
-		}
 	}
 	cr_flags |= MDS_OPEN_DEFAULT_LMV;
 	set_mrc_cr_flags(rec, cr_flags);
@@ -404,8 +401,8 @@ static void mdc_setattr_pack_rec(struct mdt_rec_setattr *rec,
 				 struct md_op_data *op_data)
 {
 	rec->sa_opcode  = REINT_SETATTR;
-	rec->sa_fsuid	= from_kuid(&init_user_ns, current_fsuid());
-	rec->sa_fsgid	= from_kgid(&init_user_ns, current_fsgid());
+	rec->sa_fsuid = lustre_current_fsuid(op_data->op_idmap, NULL);
+	rec->sa_fsgid = lustre_current_fsgid(op_data->op_idmap, NULL);
 	rec->sa_cap = ll_capability_u32(current_cap());
 	rec->sa_suppgid = -1;
 
@@ -479,8 +476,8 @@ void mdc_unlink_pack(struct req_capsule *pill, struct md_op_data *op_data,
 
 	rec->ul_opcode = op_data->op_cli_flags & CLI_RM_ENTRY ?
 					REINT_RMENTRY : REINT_UNLINK;
-	rec->ul_fsuid = op_data->op_fsuid;
-	rec->ul_fsgid = op_data->op_fsgid;
+	rec->ul_fsuid = lustre_current_fsuid(op_data->op_idmap, NULL);
+	rec->ul_fsgid = lustre_current_fsgid(op_data->op_idmap, NULL);
 	rec->ul_cap = ll_capability_u32(op_data->op_cap);
 	rec->ul_mode = op_data->op_mode;
 	rec->ul_suppgid1 = op_data->op_suppgids[0];
@@ -507,8 +504,8 @@ void mdc_link_pack(struct req_capsule *pill, struct md_op_data *op_data,
 	LASSERT(rec != NULL);
 
 	rec->lk_opcode   = REINT_LINK;
-	rec->lk_fsuid    = op_data->op_fsuid; /* current->fsuid; */
-	rec->lk_fsgid    = op_data->op_fsgid; /* current->fsgid; */
+	rec->lk_fsuid = lustre_current_fsuid(op_data->op_idmap, NULL);
+	rec->lk_fsgid = lustre_current_fsgid(op_data->op_idmap, NULL);
 	rec->lk_cap      = ll_capability_u32(op_data->op_cap);
 	rec->lk_suppgid1 = op_data->op_suppgids[0];
 	rec->lk_suppgid2 = op_data->op_suppgids[1];
@@ -583,8 +580,8 @@ void mdc_rename_pack(struct req_capsule *pill, struct md_op_data *op_data,
 
 	/* XXX do something about time, uid, gid */
 	rec->rn_opcode	 = REINT_RENAME;
-	rec->rn_fsuid    = op_data->op_fsuid;
-	rec->rn_fsgid    = op_data->op_fsgid;
+	rec->rn_fsuid = lustre_current_fsuid(op_data->op_idmap, NULL);
+	rec->rn_fsgid = lustre_current_fsgid(op_data->op_idmap, NULL);
 	rec->rn_cap      = ll_capability_u32(op_data->op_cap);
 	rec->rn_suppgid1 = op_data->op_suppgids[0];
 	rec->rn_suppgid2 = op_data->op_suppgids[1];
@@ -614,8 +611,8 @@ void mdc_migrate_pack(struct req_capsule *pill, struct md_op_data *op_data,
 	rec = req_capsule_client_get(pill, &RMF_REC_REINT);
 
 	rec->rn_opcode	 = REINT_MIGRATE;
-	rec->rn_fsuid    = op_data->op_fsuid;
-	rec->rn_fsgid    = op_data->op_fsgid;
+	rec->rn_fsuid = lustre_current_fsuid(op_data->op_idmap, NULL);
+	rec->rn_fsgid = lustre_current_fsgid(op_data->op_idmap, NULL);
 	rec->rn_cap      = ll_capability_u32(op_data->op_cap);
 	rec->rn_suppgid1 = op_data->op_suppgids[0];
 	rec->rn_suppgid2 = op_data->op_suppgids[1];
@@ -651,7 +648,7 @@ void mdc_getattr_pack(struct req_capsule *pill, __u64 valid, __u32 flags,
 		b->mbo_valid |= OBD_MD_NAMEHASH;
 	b->mbo_eadatasize = ea_size;
 	b->mbo_flags = flags;
-	__mdc_pack_body(b, op_data->op_suppgids[0]);
+	__mdc_pack_body(b, op_data->op_suppgids[0], op_data->op_idmap);
 
 	b->mbo_fid1 = op_data->op_fid1;
 	b->mbo_fid2 = op_data->op_fid2;

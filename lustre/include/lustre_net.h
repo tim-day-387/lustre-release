@@ -1101,6 +1101,9 @@ struct ptlrpc_request {
 				rq_pill_init:1, /* pill initialized */
 				rq_srv_req:1; /* server request */
 
+	/** idmap for UID/GID mapping in this request (client-side) */
+	struct mnt_idmap		*rq_idmap;
+
 	/** various buffer pointers */
 	struct lustre_msg		*rq_reqbuf;  /**< req wrapper, vmalloc*/
 	char				*rq_repbuf;  /**< rep buffer, vmalloc */
@@ -2355,7 +2358,8 @@ struct job_info {
 	__u32 ji_gid;
 };
 
-void lustre_msg_set_jobinfo(struct lustre_msg *msg, const struct job_info *ji);
+void lustre_msg_set_jobinfo(struct lustre_msg *msg, const struct job_info *ji,
+			    struct mnt_idmap *idmap);
 void lustre_msg_set_projid(struct lustre_msg *msg, __u32 projid);
 void lustre_msg_set_cksum(struct lustre_msg *msg, __u32 cksum);
 void lustre_msg_set_mbits(struct lustre_msg *msg, __u64 mbits);

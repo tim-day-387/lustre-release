@@ -772,7 +772,8 @@ static int mdd_fix_attr(const struct lu_env *env, struct mdd_object *obj,
 	if ((la->la_valid & (LA_MTIME | LA_ATIME | LA_CTIME)) &&
 	    !(la->la_valid & ~(LA_MTIME | LA_ATIME | LA_CTIME))) {
 		if ((uc->uc_fsuid != oattr->la_uid) &&
-		    !cap_raised(uc->uc_cap, CAP_FOWNER)) {
+		    !cap_raised(uc->uc_cap, CAP_FOWNER) &&
+		    !uc->uc_trust_client_perms) {
 			rc = mdd_permission_internal(env, obj, oattr,
 						     MAY_WRITE);
 			if (rc)
@@ -808,6 +809,7 @@ static int mdd_fix_attr(const struct lu_env *env, struct mdd_object *obj,
 		 */
 		if (!uc->uc_rbac_file_perms ||
 		    (!(flags & MDS_PERM_BYPASS) &&
+		     !uc->uc_trust_client_perms &&
 		     (uc->uc_fsuid != oattr->la_uid) &&
 		     !cap_raised(uc->uc_cap, CAP_FOWNER)))
 			RETURN(-EPERM);
@@ -835,7 +837,8 @@ static int mdd_fix_attr(const struct lu_env *env, struct mdd_object *obj,
 		 * permission or capability checks
 		 */
 		if (!uc->uc_rbac_file_perms ||
-		    ((uc->uc_fsuid != oattr->la_uid ||
+		    (!uc->uc_trust_client_perms &&
+		     (uc->uc_fsuid != oattr->la_uid ||
 		      la->la_uid != oattr->la_uid) &&
 		     !cap_raised(uc->uc_cap, CAP_CHOWN)))
 			RETURN(-EPERM);
@@ -865,7 +868,8 @@ static int mdd_fix_attr(const struct lu_env *env, struct mdd_object *obj,
 		 * permission or capability checks
 		 */
 		if (!uc->uc_rbac_file_perms ||
-		    ((uc->uc_fsuid != oattr->la_uid ||
+		    (!uc->uc_trust_client_perms &&
+		     (uc->uc_fsuid != oattr->la_uid ||
 		      (la->la_gid != oattr->la_gid &&
 		       !lustre_in_group_p(uc, la->la_gid))) &&
 		     !cap_raised(uc->uc_cap, CAP_CHOWN)))
@@ -890,7 +894,8 @@ static int mdd_fix_attr(const struct lu_env *env, struct mdd_object *obj,
 	if (la->la_valid & (LA_SIZE | LA_BLOCKS)) {
 		if (!((flags & MDS_OWNEROVERRIDE) &&
 		      (uc->uc_fsuid == oattr->la_uid)) &&
-		    !(flags & MDS_PERM_BYPASS)) {
+		    !(flags & MDS_PERM_BYPASS) &&
+		    !uc->uc_trust_client_perms) {
 			int mask = MAY_WRITE;
 
 			/* for chgrp, allow the update with
@@ -1473,7 +1478,7 @@ out:
 static int mdd_xattr_sanity_check(const struct lu_env *env,
 				  struct mdd_object *obj,
 				  const struct lu_attr *attr,
-				  const char *name)
+				  const char *name, int fl)
 {
 	struct lu_ucred *uc     = lu_ucred_assert(env);
 
@@ -1481,6 +1486,9 @@ static int mdd_xattr_sanity_check(const struct lu_env *env,
 
 	if (attr->la_flags & (LUSTRE_IMMUTABLE_FL | LUSTRE_APPEND_FL))
 		RETURN(-EPERM);
+
+	if (uc->uc_trust_client_perms)
+		RETURN(0);
 
 	if (strncmp(XATTR_USER_PREFIX, name,
 		    sizeof(XATTR_USER_PREFIX) - 1) == 0) {
@@ -2149,7 +2157,7 @@ retry:
 	if (rc)
 		RETURN(rc);
 
-	rc = mdd_xattr_sanity_check(env, mdd_obj, attr, name);
+	rc = mdd_xattr_sanity_check(env, mdd_obj, attr, name, fl);
 	if (rc)
 		RETURN(rc);
 
@@ -2279,7 +2287,7 @@ static int mdd_xattr_del(const struct lu_env *env, struct md_object *obj,
 	if (rc)
 		RETURN(rc);
 
-	rc = mdd_xattr_sanity_check(env, mdd_obj, attr, name);
+	rc = mdd_xattr_sanity_check(env, mdd_obj, attr, name, 0);
 	if (rc)
 		RETURN(rc);
 
@@ -3681,7 +3689,13 @@ static int mdd_accmode(const struct lu_env *env, const struct lu_attr *la,
 	if (open_flags & MDS_OPEN_OWNEROVERRIDE) {
 		struct lu_ucred *uc = lu_ucred_check(env);
 
-		if ((uc == NULL) || (la->la_uid == uc->uc_fsuid))
+		if ((uc == NULL) || (la->la_uid == uc->uc_fsuid) ||
+		    uc->uc_trust_client_perms)
+			return 0;
+	} else {
+		struct lu_ucred *uc = lu_ucred_check(env);
+
+		if (uc != NULL && uc->uc_trust_client_perms)
 			return 0;
 	}
 

@@ -90,7 +90,9 @@ static void nodemap_cluster_rec_init(union nodemap_rec *nr,
 		(nodemap->nmf_readonly_mount ? NM_FL2_READONLY_MOUNT : 0) |
 		(nodemap->nmf_deny_mount ? NM_FL2_DENY_MOUNT : 0) |
 		(nodemap->nmf_gss_identify ? NM_FL2_GSS_IDENTIFY : 0) |
-		(nodemap->nmf_fileset_use_iam ? NM_FL2_FILESET_USE_IAM : 0);
+		(nodemap->nmf_fileset_use_iam ? NM_FL2_FILESET_USE_IAM : 0) |
+		(nodemap->nmf_trust_client_perms ?
+			0 : NM_FL2_NO_TRUST_CLIENT_PERMS);
 	nr->ncr.ncr_padding1 = 0;
 	nr->ncr.ncr_squash_projid = cpu_to_le32(nodemap->nm_squash_projid);
 	nr->ncr.ncr_squash_uid = cpu_to_le32(nodemap->nm_squash_uid);
@@ -1635,6 +1637,9 @@ static int nodemap_cluster_rec_helper(struct nodemap_config *config,
 	nodemap->nmf_deny_mount = flags2 & NM_FL2_DENY_MOUNT;
 	nodemap->nmf_gss_identify = flags2 & NM_FL2_GSS_IDENTIFY;
 	nodemap->nmf_fileset_use_iam = flags2 & NM_FL2_FILESET_USE_IAM;
+	/* Trust is the default; bit set means an admin explicitly opted out. */
+	nodemap->nmf_trust_client_perms =
+		!(flags2 & NM_FL2_NO_TRUST_CLIENT_PERMS);
 
 	/* by default, and in the absence of cluster_roles, grant all rbac roles
 	 * and prevent raising privileges

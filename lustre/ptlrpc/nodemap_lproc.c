@@ -1057,6 +1057,24 @@ static int nodemap_readonly_mount_seq_show(struct seq_file *m, void *data)
 	return 0;
 }
 
+static int nodemap_trust_client_perms_seq_show(struct seq_file *m, void *data)
+{
+	struct lu_nodemap *nodemap;
+	int rc;
+
+	nodemap = nodemap_lookup_unlocked(m->private);
+	if (IS_ERR(nodemap)) {
+		rc = PTR_ERR(nodemap);
+		CERROR("cannot find nodemap '%s': rc = %d\n",
+		       (char *)m->private, rc);
+		return rc;
+	}
+
+	seq_printf(m, "%d\n", (int)nodemap->nmf_trust_client_perms);
+	nodemap_putref(nodemap);
+	return 0;
+}
+
 /**
  * nodemap_deny_mount_seq_show() - Reads and prints the deny_mount flag for the
  * given nodemap.
@@ -1178,6 +1196,7 @@ LDEBUGFS_SEQ_FOPS_RO(nodemap_audit_mode);
 LDEBUGFS_SEQ_FOPS_RO(nodemap_forbid_encryption);
 LDEBUGFS_SEQ_FOPS_RO(nodemap_raise_privs);
 LDEBUGFS_SEQ_FOPS_RO(nodemap_readonly_mount);
+LDEBUGFS_SEQ_FOPS_RO(nodemap_trust_client_perms);
 LDEBUGFS_SEQ_FOPS_RO(nodemap_deny_mount);
 LDEBUGFS_SEQ_FOPS_RO(nodemap_parent);
 LDEBUGFS_SEQ_FOPS_RO(nodemap_gssonly_identify);
@@ -1285,6 +1304,10 @@ static struct ldebugfs_vars lprocfs_nodemap_vars[] = {
 		.fops		= &nodemap_readonly_mount_fops,
 	},
 	{
+		.name		= "trust_client_perms",
+		.fops		= &nodemap_trust_client_perms_fops,
+	},
+	{
 		.name		= "deny_mount",
 		.fops		= &nodemap_deny_mount_fops,
 	},
@@ -1366,6 +1389,10 @@ static struct ldebugfs_vars lprocfs_default_nodemap_vars[] = {
 	{
 		.name		= "readonly_mount",
 		.fops		= &nodemap_readonly_mount_fops,
+	},
+	{
+		.name		= "trust_client_perms",
+		.fops		= &nodemap_trust_client_perms_fops,
 	},
 	{
 		.name		= "deny_mount",

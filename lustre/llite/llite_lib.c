@@ -1989,7 +1989,8 @@ void ll_clear_inode(struct inode *inode)
 	EXIT;
 }
 
-static int ll_md_setattr(struct dentry *dentry, struct md_op_data *op_data)
+static int ll_md_setattr(struct mnt_idmap *map, struct dentry *dentry,
+			 struct md_op_data *op_data)
 {
 	struct lustre_md md;
 	struct inode *inode = dentry->d_inode;
@@ -2003,6 +2004,7 @@ static int ll_md_setattr(struct dentry *dentry, struct md_op_data *op_data)
 				     LUSTRE_OPC_ANY, NULL);
 	if (IS_ERR(op_data))
 		RETURN(PTR_ERR(op_data));
+	op_data->op_idmap = map;
 
 	/* If this is a chgrp of a regular file, we want to reserve enough
 	 * quota to cover the entire file size.
@@ -2281,8 +2283,8 @@ int volatile_ref_file(const char *volatile_name, int volatile_len,
  *
  * In case of HSMimport, we only set attr on MDS.
  */
-int ll_setattr_raw(struct dentry *dentry, struct iattr *attr,
-		   enum op_xvalid xvalid, bool hsm_import)
+int ll_setattr_raw(struct mnt_idmap *map, struct dentry *dentry,
+		   struct iattr *attr, enum op_xvalid xvalid, bool hsm_import)
 {
 	struct inode *inode = dentry->d_inode;
 	struct ll_inode_info *lli = ll_i2info(inode);
@@ -2323,8 +2325,7 @@ int ll_setattr_raw(struct dentry *dentry, struct iattr *attr,
 
 	/* POSIX: check before ATTR_*TIME_SET set (from inode_change_ok) */
 	if (attr->ia_valid & TIMES_SET_FLAGS) {
-		if ((!uid_eq(current_fsuid(), inode->i_uid)) &&
-		    !capable(CAP_FOWNER))
+		if (!inode_owner_or_capable(map, inode))
 			GOTO(clear, rc = -EPERM);
 	}
 
@@ -2378,7 +2379,7 @@ int ll_setattr_raw(struct dentry *dentry, struct iattr *attr,
 	op_data->op_attr = *attr;
 	op_data->op_xvalid = xvalid;
 
-	rc = ll_md_setattr(dentry, op_data);
+	rc = ll_md_setattr(map, dentry, op_data);
 	if (rc)
 		GOTO(out, rc);
 	lli->lli_synced_to_mds = false;
@@ -2484,7 +2485,7 @@ int ll_setattr_raw(struct dentry *dentry, struct iattr *attr,
 					attr->ia_size = ref_attr.cat_size;
 				}
 			}
-			rc = cl_setattr_ost(inode, attr, xvalid, flags);
+			rc = cl_setattr_ost(inode, attr, xvalid, flags, map);
 		}
 	}
 
@@ -2564,6 +2565,13 @@ int ll_setattr(struct mnt_idmap *map, struct dentry *de, struct iattr *attr)
 	if (rc)
 		return rc;
 
+	if (attr->ia_valid & ATTR_UID)
+		attr->ia_uid = from_vfsuid(map, i_user_ns(de->d_inode),
+					   attr->ia_vfsuid);
+	if (attr->ia_valid & ATTR_GID)
+		attr->ia_gid = from_vfsgid(map, i_user_ns(de->d_inode),
+					   attr->ia_vfsgid);
+
 	rc = llcrypt_prepare_setattr(de, attr);
 	if (rc)
 		return rc;
@@ -2591,7 +2599,7 @@ int ll_setattr(struct mnt_idmap *map, struct dentry *de, struct iattr *attr)
 	    !(attr->ia_valid & ATTR_KILL_SGID))
 		attr->ia_valid |= ATTR_KILL_SGID;
 
-	return ll_setattr_raw(de, attr, xvalid, false);
+	return ll_setattr_raw(map, de, attr, xvalid, false);
 }
 
 int ll_statfs_internal(struct ll_sb_info *sbi, struct obd_statfs *osfs,
@@ -3365,7 +3373,7 @@ static int fileattr_set(struct inode *inode, int flags)
 	if (attr == NULL)
 		RETURN(-ENOMEM);
 
-	rc = cl_setattr_ost(inode, attr, OP_XVALID_FLAGS, flags);
+	rc = cl_setattr_ost(inode, attr, OP_XVALID_FLAGS, flags, NULL);
 
 	OBD_FREE_PTR(attr);
 	RETURN(rc);
@@ -4001,11 +4009,21 @@ struct md_op_data *ll_prep_md_op_data(struct md_op_data *op_data,
 	op_data->op_namelen = fname.disk_name.len;
 	op_data->op_mode = mode;
 	op_data->op_mod_time = ktime_get_real_seconds();
-	op_data->op_fsuid = from_kuid(&init_user_ns, current_fsuid());
-	op_data->op_fsgid = from_kgid(&init_user_ns, current_fsgid());
+	op_data->op_idmap = mnt_idmap(ll_i2sbi(i1)->ll_mnt.mnt);
 	op_data->op_cap = current_cap();
 	op_data->op_mds = 0;
 	op_data->op_projid = ll_get_inode_projid(i1, i2);
+
+	/* Resolve the owner client-side (including setgid-dir inheritance for
+	 * create-style ops) so the MDS receives the final owner. Callers with
+	 * a more accurate VFS idmap (ll_new_node, do_mkdir) override later.
+	 */
+	if (opc == LUSTRE_OPC_CREATE || opc == LUSTRE_OPC_MKDIR ||
+	    opc == LUSTRE_OPC_SYMLINK || opc == LUSTRE_OPC_MKNOD)
+		ll_init_op_data_owner(op_data, i1, op_data->op_idmap, mode);
+	else
+		op_data->op_owner_uid = op_data->op_owner_gid = 0;
+
 	if ((opc == LUSTRE_OPC_CREATE) && (name != NULL) &&
 	     filename_is_volatile(name, namelen, &op_data->op_mds)) {
 		op_data->op_bias |= MDS_CREATE_VOLATILE;
@@ -4365,7 +4383,7 @@ int ll_getparent(struct file *file, struct getparent __user *arg)
 		GOTO(ldata_free, rc);
 
 	rc = ll_xattr_list(inode, XATTR_NAME_LINK, XATTR_TRUSTED_T, buf.lb_buf,
-			   buf.lb_len, OBD_MD_FLXATTR);
+			   buf.lb_len, OBD_MD_FLXATTR, NULL);
 	if (rc < 0)
 		GOTO(lb_free, rc);
 

@@ -304,6 +304,15 @@ check_capabilities:
 	CDEBUG(D_SEC, "permission denied for "DFID"\n",
 	       PFID(mdd_object_fid(obj)));
 
+	/* The MDS sees the caller's uc_cap with caps stripped for non-local
+	 * roots (see old_init_ucred_common), so it can't reliably verify caps
+	 * the caller holds inside a child user namespace (e.g. CAP_DAC_OVERRIDE
+	 * for a rootless container). If the nodemap trusts the client's POSIX
+	 * decision, defer to that rather than rejecting here.
+	 */
+	if (uc->uc_trust_client_perms)
+		RETURN(0);
+
 	RETURN(-EACCES);
 }
 

@@ -992,8 +992,14 @@ struct md_op_data {
 	struct lmv_stripe_object *op_lso2;
 	struct lmv_stripe_object *op_default_lso1; /* default LMV */
 	__u32			op_suppgids[2];
-	__u32			op_fsuid;
-	__u32			op_fsgid;
+	struct mnt_idmap	*op_idmap;
+	/* Owner uid/gid for newly-created inodes; resolved client-side by
+	 * ll_prep_md_op_data with setgid-dir inheritance applied (mirrors
+	 * inode_init_owner). The wire packers in mdc consume these instead
+	 * of computing fresh from current's fsuid/fsgid.
+	 */
+	__u32			op_owner_uid;
+	__u32			op_owner_gid;
 	kernel_cap_t		op_cap;
 	void			*op_data;
 	size_t			op_data_size;
@@ -1346,11 +1352,13 @@ struct md_ops {
 	int (*m_setxattr)(struct obd_export *exp, const struct lu_fid *fid,
 			  u64 obd_md_valid, const char *name, const void *value,
 			  size_t value_size, unsigned int xattr_flags,
-			  u32 suppgid, u32 projid, struct ptlrpc_request **req);
+			  u32 suppgid, u32 projid, struct mnt_idmap *idmap,
+			  struct ptlrpc_request **req);
 
 	int (*m_getxattr)(struct obd_export *exp, const struct lu_fid *fid,
 			  u64 obd_md_valid, const char *name, size_t buf_size,
-			  u32 projid, struct ptlrpc_request **req);
+			  u32 projid, struct mnt_idmap *idmap,
+			  struct ptlrpc_request **req);
 
 	int (*m_intent_getattr_async)(struct obd_export *exp,
 				      struct md_op_item *item);
@@ -1566,6 +1574,35 @@ static inline struct inode *page2inode(struct page *page)
 	} else {
 		return NULL;
 	}
+}
+
+/* Map current's fsuid/fsgid through the mount idmap into @fs_userns and
+ * return the numeric uid/gid as it should appear on the wire.
+ *
+ * @idmap       NULL → identity mapping (&nop_mnt_idmap)
+ * @fs_userns   the filesystem's user namespace; NULL → &init_user_ns
+ *              (Lustre's superblock currently always uses init_user_ns,
+ *               but llite call sites pass i_user_ns(inode) for forward
+ *               compatibility with userns-mounted superblocks.)
+ */
+static inline __u32 lustre_current_fsuid(struct mnt_idmap *idmap,
+					 struct user_namespace *fs_userns)
+{
+	if (!idmap)
+		idmap = &nop_mnt_idmap;
+	if (!fs_userns)
+		fs_userns = &init_user_ns;
+	return from_kuid(fs_userns, mapped_fsuid(idmap, fs_userns));
+}
+
+static inline __u32 lustre_current_fsgid(struct mnt_idmap *idmap,
+					 struct user_namespace *fs_userns)
+{
+	if (!idmap)
+		idmap = &nop_mnt_idmap;
+	if (!fs_userns)
+		fs_userns = &init_user_ns;
+	return from_kgid(fs_userns, mapped_fsgid(idmap, fs_userns));
 }
 
 #endif /* __OBD_H */

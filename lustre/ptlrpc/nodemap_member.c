@@ -285,6 +285,7 @@ static bool nodemap_change_need_update(struct lu_nodemap *old,
 	 * correct. So any changes to properties below require to revoke locks.
 	 */
 	if (old->nmf_trust_client_ids != new->nmf_trust_client_ids ||
+	    old->nmf_trust_client_perms != new->nmf_trust_client_perms ||
 	    old->nmf_allow_root_access != new->nmf_allow_root_access ||
 	    old->nmf_deny_unknown != new->nmf_deny_unknown ||
 	    old->nmf_map_mode != new->nmf_map_mode ||

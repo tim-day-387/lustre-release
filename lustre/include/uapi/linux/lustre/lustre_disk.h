@@ -263,6 +263,7 @@ enum nm_flag2_bits {
 	NM_FL2_DENY_MOUNT = 0x2,
 	NM_FL2_FILESET_USE_IAM = 0x4,
 	NM_FL2_GSS_IDENTIFY = 0x8,
+	NM_FL2_NO_TRUST_CLIENT_PERMS = 0x10,
 };
 
 /* Nodemap records, uses 32 byte record length.

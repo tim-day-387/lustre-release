@@ -1369,6 +1369,7 @@ static int nodemap_inherit_properties(struct lu_nodemap *dst,
 		dst->nmf_raise_privs = NODEMAP_RAISE_PRIV_NONE;
 		dst->nmf_rbac_raise = NODEMAP_RBAC_NONE;
 		dst->nmf_gss_identify = 0;
+		dst->nmf_trust_client_perms = 1;
 
 		dst->nm_squash_uid = NODEMAP_NOBODY_UID;
 		dst->nm_squash_gid = NODEMAP_NOBODY_GID;
@@ -1397,6 +1398,7 @@ static int nodemap_inherit_properties(struct lu_nodemap *dst,
 		dst->nmf_raise_privs = src->nmf_raise_privs;
 		dst->nmf_rbac_raise = src->nmf_rbac_raise;
 		dst->nmf_gss_identify = src->nmf_gss_identify;
+		dst->nmf_trust_client_perms = src->nmf_trust_client_perms;
 		dst->nm_squash_uid = src->nm_squash_uid;
 		dst->nm_squash_gid = src->nm_squash_gid;
 		dst->nm_squash_projid = src->nm_squash_projid;
@@ -4151,6 +4153,38 @@ out:
 EXPORT_SYMBOL(nodemap_set_readonly_mount);
 
 /**
+ * nodemap_set_trust_client_perms() - Toggle the nmf_trust_client_perms flag.
+ * @name: nodemap name
+ * @trust: if true, the MDS skips its server-side POSIX re-checks
+ *         (mode/owner/sticky/cap) for clients in this nodemap and trusts
+ *         the kernel client's local permission decision instead.
+ *
+ * Return:
+ * * %0 on success
+ */
+int nodemap_set_trust_client_perms(const char *name, bool trust)
+{
+	struct lu_nodemap *nodemap = NULL;
+	int rc = 0;
+
+	nodemap = nodemap_lookup_unlocked(name);
+	if (IS_ERR(nodemap))
+		GOTO(out, rc = PTR_ERR(nodemap));
+	if (!allow_op_on_nm(nodemap))
+		GOTO(out_putref, rc = -ENXIO);
+
+	nodemap->nmf_trust_client_perms = trust;
+	rc = nodemap_idx_nodemap_update(nodemap);
+
+	nm_member_revoke_locks(nodemap);
+out_putref:
+	nodemap_putref(nodemap);
+out:
+	return rc;
+}
+EXPORT_SYMBOL(nodemap_set_trust_client_perms);
+
+/**
  * nodemap_set_deny_mount() - Set the nmf_deny_mount flag to true or false.
  * @name: nodemap name
  * @deny_mount: if true, rejects mount attempt
@@ -5271,6 +5305,12 @@ static int cfg_nodemap_cmd(enum lcfg_command_type cmd, const char *nodemap_name,
 			rc = nodemap_set_gss_identify(nodemap_name,
 						      bool_switch);
 		break;
+	case LCFG_NODEMAP_TRUST_CLIENT_PERMS:
+		rc = kstrtobool(param, &bool_switch);
+		if (rc == 0)
+			rc = nodemap_set_trust_client_perms(nodemap_name,
+							    bool_switch);
+		break;
 	case LCFG_NODEMAP_MAP_MODE:
 	{
 		char *p;
@@ -5674,6 +5714,7 @@ int server_iocontrol_nodemap(struct obd_device *obd,
 	case LCFG_NODEMAP_READONLY_MOUNT:
 	case LCFG_NODEMAP_DENY_MOUNT:
 	case LCFG_NODEMAP_GSS_IDENTIFY:
+	case LCFG_NODEMAP_TRUST_CLIENT_PERMS:
 	case LCFG_NODEMAP_RBAC:
 		if (lcfg->lcfg_bufcount != 4)
 			GOTO(out_lcfg, rc = -EINVAL);

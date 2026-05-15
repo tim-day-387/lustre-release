@@ -761,7 +761,8 @@ exit:
 
 
 static int ll_intent_file_open(struct dentry *de, void *lmm, ssize_t lmmsize,
-				struct lookup_intent *itp)
+				struct lookup_intent *itp,
+				struct mnt_idmap *idmap)
 {
 	struct ll_sb_info *sbi = ll_i2sbi(de->d_inode);
 	struct dentry *parent = dget_parent(de);
@@ -811,6 +812,8 @@ retry:
 	}
 	op_data->op_data = lmm;
 	op_data->op_data_size = lmmsize;
+
+	op_data->op_idmap = idmap;
 
 	if (!sbi->ll_dir_open_read && S_ISDIR(de->d_inode->i_mode))
 		op_data->op_cli_flags &= ~CLI_READ_ON_OPEN;
@@ -1213,7 +1216,8 @@ restart:
 			 * to get file with different fid.
 			 */
 			it->it_open_flags |= MDS_OPEN_BY_FID;
-			rc = ll_intent_file_open(dentry, NULL, 0, it);
+			rc = ll_intent_file_open(dentry, NULL, 0, it,
+					 file_mnt_idmap(file));
 			if (rc)
 				GOTO(out_openerr, rc);
 
@@ -2118,6 +2122,8 @@ restart:
 	}
 
 	if (cl_io_rw_init(env, io, iot, *ppos, per_bytes) == 0) {
+		ll_io_set_jobinfo(inode, file_mnt_idmap(file));
+
 		if (iocb_ki_flags_check(flags, APPEND))
 			range_lock_init(&range, 0, LUSTRE_EOF);
 		else
@@ -2739,7 +2745,7 @@ int ll_lov_setstripe_ea_info(struct inode *inode, struct dentry *dentry,
 	/* from here, the layout in lum is in Little Endian */
 
 	ll_inode_size_lock(inode);
-	rc = ll_intent_file_open(dentry, lum, lum_size, &oit);
+	rc = ll_intent_file_open(dentry, lum, lum_size, &oit, NULL);
 	if (rc < 0)
 		GOTO(out_unlock, rc);
 
@@ -2984,7 +2990,7 @@ static ssize_t ll_lov_setstripe(struct inode *inode, struct file *file,
 			struct iattr attr = { 0 };
 
 			rc = cl_setattr_ost(inode, &attr, OP_XVALID_FLAGS,
-					    LUSTRE_ENCRYPT_FL);
+					    LUSTRE_ENCRYPT_FL, NULL);
 		}
 	}
 	cl_lov_delay_create_clear(&file->f_flags);
@@ -3853,7 +3859,7 @@ static int ll_hsm_import(struct inode *inode, struct file *file,
 			 ATTR_ATIME | ATTR_ATIME_SET;
 
 	inode_lock(inode);
-	rc = ll_setattr_raw(file_dentry(file), attr, 0, true);
+	rc = ll_setattr_raw(&nop_mnt_idmap, file_dentry(file), attr, 0, true);
 	if (rc == -ENODATA)
 		rc = 0;
 	inode_unlock(inode);
@@ -3903,8 +3909,8 @@ static int ll_file_futimes_3(struct file *file, const struct ll_futimes_3 *lfu)
 		RETURN(-EINVAL);
 
 	inode_lock(inode);
-	rc = ll_setattr_raw(file_dentry(file), &ia, OP_XVALID_CTIME_SET,
-			    false);
+	rc = ll_setattr_raw(&nop_mnt_idmap, file_dentry(file), &ia,
+			    OP_XVALID_CTIME_SET, false);
 	inode_unlock(inode);
 
 	RETURN(rc);
@@ -4244,7 +4250,8 @@ int ll_set_project(struct inode *inode, __u32 xflags, __u32 projid)
 	if (ll_i2info(inode)->lli_clob) {
 		struct iattr attr = { 0 };
 
-		rc = cl_setattr_ost(inode, &attr, OP_XVALID_FLAGS, xflags);
+		rc = cl_setattr_ost(inode, &attr, OP_XVALID_FLAGS, xflags,
+				    NULL);
 	}
 
 out_fsxattr:
@@ -6209,7 +6216,8 @@ static int ll_merge_md_attr(struct inode *inode)
 	RETURN(0);
 }
 
-int ll_getattr_dentry(struct dentry *de, struct kstat *stat, u32 request_mask,
+int ll_getattr_dentry(struct mnt_idmap *map, struct dentry *de,
+		      struct kstat *stat, u32 request_mask,
 		      unsigned int flags, bool foreign)
 {
 	struct inode *inode = de->d_inode;
@@ -6343,8 +6351,8 @@ fill_attr:
 	 */
 	if (!S_ISDIR(inode->i_mode))
 		ll_inode_size_lock(inode);
-	stat->uid = inode->i_uid;
-	stat->gid = inode->i_gid;
+	stat->uid = vfsuid_into_kuid(i_uid_into_vfsuid(map, inode));
+	stat->gid = vfsgid_into_kgid(i_gid_into_vfsgid(map, inode));
 	stat->atime = inode_get_atime(inode);
 	stat->mtime = inode_get_mtime(inode);
 	stat->ctime = inode_get_ctime(inode);
@@ -6408,7 +6416,7 @@ fill_attr:
 int ll_getattr(struct mnt_idmap *map, const struct path *path,
 	       struct kstat *stat, u32 request_mask, unsigned int flags)
 {
-	return ll_getattr_dentry(path->dentry, stat, request_mask, flags,
+	return ll_getattr_dentry(map, path->dentry, stat, request_mask, flags,
 				 false);
 }
 
@@ -6795,7 +6803,8 @@ static int ll_layout_fetch(struct inode *inode, struct ldlm_lock *lock)
 		RETURN(rc);
 
 	rc = md_getxattr(sbi->ll_md_exp, ll_inode2fid(inode), OBD_MD_FLXATTR,
-			 XATTR_NAME_LOV, lmmsize, ll_i2projid(inode), &req);
+			 XATTR_NAME_LOV, lmmsize, ll_i2projid(inode), NULL,
+			 &req);
 	if (rc < 0) {
 		if (rc == -ENODATA)
 			GOTO(out, rc = 0); /* empty layout */

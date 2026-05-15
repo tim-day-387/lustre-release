@@ -341,6 +341,48 @@ static inline void lli_jobinfo_cpy(const struct ll_inode_info *lli,
 	} while (read_seqretry(&lli->lli_jobinfo_seqlock, seq));
 }
 
+void ll_io_set_jobinfo(struct inode *inode, struct mnt_idmap *idmap);
+
+/* Compute the owner uid/gid and final mode for a newly-created inode under
+ * @dir, mirroring the kernel's inode_init_owner() (and mode_strip_sgid()):
+ *   - uid is the caller's fsuid mapped through @idmap
+ *   - if @dir is setgid: gid is the parent dir's gid; new directories carry
+ *     S_ISGID forward; non-directories drop S_ISGID unless the caller is in
+ *     the inherited group (vfsgid via @idmap) or has CAP_FSETID with respect
+ *     to @dir's idmap context
+ *   - otherwise gid is the caller's fsgid mapped through @idmap
+ *
+ * The group/capability checks must use the vfs idmap-aware helpers
+ * (vfsgid_in_group_p, capable_wrt_inode_uidgid) so they give the correct
+ * answer when the caller is in a non-init user namespace; plain in_group_p
+ * and capable() look at the wrong group set / user namespace and would
+ * incorrectly strip S_ISGID in that case.
+ */
+static inline void ll_init_op_data_owner(struct md_op_data *op_data,
+					 struct inode *dir,
+					 struct mnt_idmap *idmap,
+					 umode_t mode)
+{
+	op_data->op_owner_uid =
+		lustre_current_fsuid(idmap, i_user_ns(dir));
+
+	if (dir->i_mode & S_ISGID) {
+		op_data->op_owner_gid = from_kgid(i_user_ns(dir), dir->i_gid);
+		if (S_ISDIR(mode)) {
+			mode |= S_ISGID;
+		} else if ((mode & (S_ISGID | S_IXGRP)) ==
+				(S_ISGID | S_IXGRP) &&
+			   !vfsgid_in_group_p(i_gid_into_vfsgid(idmap, dir)) &&
+			   !capable_wrt_inode_uidgid(idmap, dir, CAP_FSETID)) {
+			mode &= ~S_ISGID;
+		}
+	} else {
+		op_data->op_owner_gid =
+			lustre_current_fsgid(idmap, i_user_ns(dir));
+	}
+	op_data->op_mode = mode;
+}
+
 #ifndef HAVE_USER_NAMESPACE_ARG
 #define inode_permission(ns, inode, mask)	inode_permission(inode, mask)
 #define generic_permission(ns, inode, mask)	generic_permission(inode, mask)
@@ -1369,7 +1411,8 @@ extern void ll_rw_stats_tally(struct ll_sb_info *sbi, pid_t pid,
 			      size_t count, int rw);
 int ll_getattr(struct mnt_idmap *, const struct path *path,
 	       struct kstat *stat, u32 request_mask, unsigned int flags);
-int ll_getattr_dentry(struct dentry *de, struct kstat *stat, u32 request_mask,
+int ll_getattr_dentry(struct mnt_idmap *map, struct dentry *de,
+		      struct kstat *stat, u32 request_mask,
 		      unsigned int flags, bool foreign);
 #ifdef CONFIG_LUSTRE_FS_POSIX_ACL
 struct posix_acl *ll_get_acl(
@@ -1477,8 +1520,8 @@ void ll_dir_clear_lsm_md(struct inode *inode);
 void ll_clear_inode(struct inode *inode);
 int volatile_ref_file(const char *volatile_name, int volatile_len,
 		      struct file **ref_file);
-int ll_setattr_raw(struct dentry *dentry, struct iattr *attr,
-		   enum op_xvalid xvalid, bool hsm_import);
+int ll_setattr_raw(struct mnt_idmap *map, struct dentry *dentry,
+		   struct iattr *attr, enum op_xvalid xvalid, bool hsm_import);
 int ll_setattr(struct mnt_idmap *map, struct dentry *de, struct iattr *attr);
 int ll_statfs(struct dentry *de, struct kstatfs *sfs);
 int ll_statfs_internal(struct ll_sb_info *sbi, struct obd_statfs *osfs,
@@ -1740,7 +1783,8 @@ extern const struct xattr_handler *ll_xattr_handlers[];
 
 ssize_t ll_listxattr(struct dentry *dentry, char *buffer, size_t size);
 int ll_xattr_list(struct inode *inode, const char *name, int type,
-		  void *buffer, size_t size, u64 valid);
+		  void *buffer, size_t size, u64 valid,
+		  struct mnt_idmap *idmap);
 const struct xattr_handler *get_xattr_type(const char *name);
 
 /* Common IO arguments for various VFS I/O interfaces. */
@@ -2074,7 +2118,8 @@ int ll_getparent(struct file *file, struct getparent __user *arg);
 
 /* lcommon_cl.c */
 int cl_setattr_ost(struct inode *inode, const struct iattr *attr,
-		   enum op_xvalid xvalid, unsigned int attr_flags);
+		   enum op_xvalid xvalid, unsigned int attr_flags,
+		   struct mnt_idmap *idmap);
 
 extern struct lu_env *cl_inode_fini_env;
 extern __u16 cl_inode_fini_refcheck;
