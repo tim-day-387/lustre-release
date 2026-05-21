@@ -52,4 +52,13 @@ config LNET_EFALND
 
 	  If unsure, say N.
 
+config GCOV_PROFILE_LNET
+	bool "Enable gcov profiling for LNet"
+	depends on GCOV_KERNEL
+	default n
+	help
+	  Enable gcov-based code coverage profiling for LNet.
+
+	  If unsure, say N.
+
 endif # LNET

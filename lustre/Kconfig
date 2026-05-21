@@ -92,4 +92,13 @@ config LUSTRE_FS_TESTS
 
 	  If unsure, say N.
 
+config GCOV_PROFILE_LUSTRE
+	bool "Enable gcov profiling for Lustre"
+	depends on GCOV_KERNEL
+	default n
+	help
+	  Enable gcov-based code coverage profiling for the Lustre filesystem.
+
+	  If unsure, say N.
+
 endif # LUSTRE
