@@ -246,8 +246,6 @@ AC_DEFUN([LB_KABI_CHECKS], [
 			# This is strange - Lustre supports a target we don't
 			AC_MSG_ERROR([Modules are not supported on $target_os])
 	])
-	# Use OpenSFS UAPI header path instead of linux kernel
-	CPPFLAGS="-I$PWD/lnet/include/uapi -I$PWD/lustre/include/uapi $CPPFLAGS"
 ])
 ]) # LB_CONFIG_MODULES
 
@@ -341,6 +339,7 @@ AC_MSG_RESULT([$enable_manpages])
 AC_DEFUN([LB_CONFIG_HEADERS], [
 AC_CONFIG_HEADERS([config.h])
 CPPFLAGS="-include $PWD/config.h $CPPFLAGS"
+CPPFLAGS="-I$PWD/lnet/include/uapi -I$PWD/lustre/include/uapi $CPPFLAGS"
 EXTRA_KCFLAGS="-include $PWD/config.h $EXTRA_KCFLAGS"
 AC_SUBST(EXTRA_KCFLAGS)
 ]) # LB_CONFIG_HEADERS
@@ -460,7 +459,7 @@ AC_ARG_ENABLE([server],
 # call it here.
 LB_CONFIG_MODULES
 LC_CONFIG_COVERAGE
-AS_IF([test x$enable_modules = xno], [enable_server=no])
+AS_IF([test x$enable_modules = xno -a x$enable_server != xyes], [enable_server=no])
 LB_CONFIG_LDISKFS
 LB_CONFIG_ZFS
 AS_IF([test "x$enable_modules" = xyes], [
