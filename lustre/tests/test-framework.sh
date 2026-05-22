@@ -877,7 +877,7 @@ lustre_os_release() {
 }
 
 module_loaded () {
-	/sbin/lsmod | grep -q "^\<$1\>"
+	/sbin/lsmod | grep -q "^\<$1\>" || [ -d /sys/module/$1 ]
 }
 
 check_lfs_df_ret_val() {
@@ -932,19 +932,10 @@ load_module() {
 	local ext=".ko"
 	local base=$(basename $module $ext)
 	local path
-	local -A module_is_loaded_aa
 	local optvar
 	local mod
 
-	for mod in $(lsmod | awk '{ print $1; }'); do
-		module_is_loaded_aa[${mod//-/_}]=true
-	done
-
-	module_is_loaded() {
-		${module_is_loaded_aa[${1//-/_}]:-false}
-	}
-
-	if module_is_loaded $base; then
+	if module_loaded $base; then
 		return
 	fi
 
@@ -960,7 +951,7 @@ load_module() {
 	if [[ -n "$path" ]]; then
 		# Try to load any non-Lustre modules that $module depends on.
 		for mod in $(modinfo --field=depends $path | tr ',' ' '); do
-			if ! module_is_loaded $mod; then
+			if ! module_loaded $mod; then
 				modprobe $mod
 			fi
 		done
