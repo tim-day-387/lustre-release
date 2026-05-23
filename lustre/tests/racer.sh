@@ -92,6 +92,8 @@ RACER_LOV_MAX_STRIPECOUNT=${RACER_LOV_MAX_STRIPECOUNT:-$LOV_MAX_STRIPE_COUNT}
 RACER_EXTRA_LAYOUT=${RACER_EXTRA_LAYOUT:-""}
 RACER_MIGRATE_STRIPE_MAX=${RACER_MIGRATE_STRIPE_MAX:-1}
 RACER_ENABLE_FALLOCATE=${RACER_ENABLE_FALLOCATE:-true}
+RACER_ENABLE_LFSCK=${RACER_ENABLE_LFSCK:-true}
+LFSCK_PERIOD=${LFSCK_PERIOD:-15}
 
 fail_random_facet () {
 	local facets=${victims[@]}
@@ -191,6 +193,12 @@ test_1() {
 		lss_pids="$lss_pids $pid"
 	fi
 
+	local lfsck_pid=""
+	if $RACER_ENABLE_LFSCK; then
+		LFSCK_PERIOD=$LFSCK_PERIOD $LUSTRE/tests/racer/lfsck_racer.sh &
+		lfsck_pid=$!
+	fi
+
 	echo racers pids: $rpids
 	for pid in $rpids; do
 		wait $pid
@@ -216,6 +224,13 @@ test_1() {
 		done
 
 		lss_cleanup
+	fi
+
+	if $RACER_ENABLE_LFSCK; then
+		[[ -n "$lfsck_pid" ]] && kill $lfsck_pid 2>/dev/null || true
+		[[ -n "$lfsck_pid" ]] && wait $lfsck_pid 2>/dev/null || true
+		run_lfsck
+		rrc=$((rrc + $?))
 	fi
 
 	return $rrc

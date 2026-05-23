@@ -17,6 +17,7 @@ if [[ -z "$RACER_PROGS" ]]; then
 	RACER_PROGS+=" file_symlink file_list file_concat file_exec file_chown"
 	RACER_PROGS+=" file_chmod file_mknod file_truncate file_delxattr"
 	RACER_PROGS+=" file_getxattr file_setxattr"
+	RACER_PROGS+=" file_statfs file_flock file_ladvise file_mmap proc_read"
 
 	if $RACER_ENABLE_REMOTE_DIRS || $RACER_ENABLE_STRIPED_DIRS; then
 		RACER_PROGS+=" dir_remote"
@@ -84,12 +85,23 @@ racer_cleanup()
 	return 1
 }
 
+RACER_SAVED_JOBID_VAR=$($LCTL get_param -n jobid_var 2>/dev/null || true)
+
+racer_jobstats_cleanup()
+{
+	[[ -n "$RACER_SAVED_JOBID_VAR" ]] &&
+		$LCTL set_param jobid_var="$RACER_SAVED_JOBID_VAR" > /dev/null 2>&1
+}
+
+$LCTL set_param jobid_var=procname_uid > /dev/null 2>&1
+
 RC=0
 
 echo "Running $0 for $DURATION seconds. CTRL-C to exit"
 trap "
 	echo 'Cleaning up'
 	racer_cleanup
+	racer_jobstats_cleanup
 	exit 0
 " INT TERM
 
@@ -103,6 +115,7 @@ done
 
 sleep $DURATION
 racer_cleanup || RC=$?
+racer_jobstats_cleanup
 
 # Check our to see whether our test DIR is still available.
 df $DIR
